@@ -8,6 +8,48 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 logger = logging.getLogger(__name__)
 
 
+class SentinelException(Exception):
+    """Base exception for all Sentinel domain errors."""
+
+    pass
+
+
+class AuthenticationError(SentinelException):
+    """Base class for authentication errors."""
+
+    pass
+
+
+class InvalidTokenError(AuthenticationError):
+    """Raised when a JWT is malformed, invalid, or has a bad signature."""
+
+    pass
+
+
+class ExpiredTokenError(AuthenticationError):
+    """Raised when a JWT has expired."""
+
+    pass
+
+
+class PermissionDeniedError(SentinelException):
+    """Raised when a user attempts an action without required permissions."""
+
+    pass
+
+
+class InactiveUserError(SentinelException):
+    """Raised when a deactivated user attempts to authenticate."""
+
+    pass
+
+
+class AccountLockedError(SentinelException):
+    """Raised when a locked user attempts to authenticate."""
+
+    pass
+
+
 def setup_exception_handlers(app: FastAPI) -> None:
     """
     Registers global exception handlers for the FastAPI application.

@@ -1,9 +1,18 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Callable
 
 from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import (
+    AccountLockedError,
+    InactiveUserError,
+    InvalidTokenError,
+    PermissionDeniedError,
+)
+from app.core.security import verify_access_token
 from app.db.session import async_session_maker
+from app.modules.auth.models import User
 from app.modules.auth.repository import (
     PermissionRepository,
     RefreshTokenRepository,
@@ -11,6 +20,9 @@ from app.modules.auth.repository import (
     UserRepository,
 )
 from app.modules.auth.service import AuthenticationService
+
+# OAuth2 scheme configures Swagger UI to send tokens
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -58,3 +70,59 @@ def get_auth_service(
         permission_repo=permission_repo,
         refresh_token_repo=refresh_token_repo,
     )
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    auth_service: AuthenticationService = Depends(get_auth_service),
+) -> User:
+    """
+    Validates the JWT access token and resolves the authenticated User.
+    Rejects inactive and locked users.
+    """
+    # Verify signature and expiration
+    payload = verify_access_token(token)
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise InvalidTokenError("Token missing 'sub' claim.")
+
+    import uuid
+
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError:
+        raise InvalidTokenError("Invalid 'sub' claim format.")
+
+    user = await auth_service.user_repo.get_by_id(user_id)
+    if not user:
+        raise InvalidTokenError("User not found.")
+
+    if not user.is_active:
+        raise InactiveUserError("User account is disabled or deleted.")
+
+    from datetime import datetime, timezone
+
+    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        raise AccountLockedError("User account is temporarily locked.")
+
+    return user
+
+
+def require_permission(permission_name: str) -> Callable[..., User]:
+    """
+    Dependency factory to enforce permission-based authorization.
+    Avoids duplicate aggregation logic by reusing auth_service.get_current_permissions.
+    """
+
+    async def permission_checker(
+        current_user: User = Depends(get_current_user),
+        auth_service: AuthenticationService = Depends(get_auth_service),
+    ) -> User:
+        permissions = await auth_service.get_current_permissions(current_user.id)
+        if permission_name not in permissions:
+            raise PermissionDeniedError(
+                f"Missing required permission: {permission_name}"
+            )
+        return current_user
+
+    return permission_checker

@@ -4,15 +4,26 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.common.schemas import ErrorResponse, SuccessResponse
-from app.modules.auth.dependencies import get_auth_service
-from app.modules.auth.exceptions import (
+from app.core.exceptions import (
     AccountLockedError,
     AuthenticationError,
+    InactiveUserError,
+    InvalidTokenError,
+    PermissionDeniedError,
+)
+from app.core.security import verify_refresh_token
+from app.modules.auth.dependencies import (
+    get_auth_service,
+    get_current_user,
+    require_permission,
+)
+from app.modules.auth.exceptions import (
     DuplicateEntryError,
     InvalidCredentialsError,
     NotFoundError,
     UnauthorizedError,
 )
+from app.modules.auth.models import User
 from app.modules.auth.schemas import (
     ChangePasswordRequest,
     CreateRole,
@@ -37,12 +48,6 @@ roles_router = APIRouter(prefix="/roles", tags=["roles"])
 perms_router = APIRouter(prefix="/permissions", tags=["permissions"])
 
 
-# Placeholder for future dependency
-async def get_current_user() -> uuid.UUID:
-    """Placeholder dependency to get the current authenticated user's ID."""
-    return uuid.uuid4()
-
-
 def handle_service_error(e: Exception) -> JSONResponse:
     """Maps service exceptions to standard HTTP error responses."""
     status_code = 500
@@ -54,12 +59,15 @@ def handle_service_error(e: Exception) -> JSONResponse:
     elif isinstance(e, AccountLockedError):
         status_code = 401
         error_code = "AUTH_ACCOUNT_LOCKED"
-    elif isinstance(e, UnauthorizedError):
+    elif isinstance(e, InactiveUserError):
+        status_code = 401
+        error_code = "AUTH_INACTIVE_USER"
+    elif isinstance(e, (InvalidTokenError, UnauthorizedError, AuthenticationError)):
         status_code = 401
         error_code = "UNAUTHORIZED"
-    elif isinstance(e, AuthenticationError):
-        status_code = 401
-        error_code = "AUTHENTICATION_FAILED"
+    elif isinstance(e, PermissionDeniedError):
+        status_code = 403
+        error_code = "FORBIDDEN"
     elif isinstance(e, NotFoundError):
         status_code = 404
         error_code = "NOT_FOUND"
@@ -98,13 +106,19 @@ async def refresh(
     data: RefreshRequest, service: AuthenticationService = Depends(get_auth_service)
 ):
     try:
-        # Extract user_id from token if it was a JWT, but it's a hex string.
-        # Since we cannot easily look up the Argon2 hash without verifying all,
-        # we bypass it for now using a dummy or placeholder until the architecture is fixed.
-        # We will pass a dummy UUID to satisfy the signature.
-        dummy_user_id = uuid.uuid4()
+        # Verify the token natively and extract the real user_id
+        payload = verify_refresh_token(data.refresh_token)
+        user_id_str = payload.get("sub")
+        if not user_id_str:
+            raise InvalidTokenError("Refresh token missing 'sub' claim")
+
+        try:
+            real_user_id = uuid.UUID(user_id_str)
+        except ValueError:
+            raise InvalidTokenError("Invalid 'sub' claim format")
+
         access_token, new_refresh = await service.refresh_session(
-            dummy_user_id, data.refresh_token
+            real_user_id, data.refresh_token
         )
         return SuccessResponse(
             message="Session refreshed",
@@ -117,14 +131,14 @@ async def refresh(
 @auth_router.post("/logout", response_model=SuccessResponse[dict])
 async def logout(
     data: LogoutRequest,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
         from app.core.security import get_password_hash
 
         token_hash = get_password_hash(data.refresh_token)
-        await service.logout(user_id, token_hash)
+        await service.logout(current_user.id, token_hash)
         return SuccessResponse(message="Logout successful", data={})
     except Exception as e:
         return handle_service_error(e)
@@ -133,11 +147,13 @@ async def logout(
 @auth_router.post("/change-password", response_model=SuccessResponse[dict])
 async def change_password(
     data: ChangePasswordRequest,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
-        await service.change_password(user_id, data.old_password, data.new_password)
+        await service.change_password(
+            current_user.id, data.old_password, data.new_password
+        )
         return SuccessResponse(message="Password updated successfully", data={})
     except Exception as e:
         return handle_service_error(e)
@@ -145,15 +161,11 @@ async def change_password(
 
 @auth_router.get("/me", response_model=SuccessResponse[UserResponse])
 async def get_me(
-    user_id: uuid.UUID = Depends(get_current_user),
-    service: AuthenticationService = Depends(get_auth_service),
+    current_user: User = Depends(get_current_user),
 ):
     try:
-        user = await service.user_repo.get_by_id(user_id)
-        if not user:
-            raise NotFoundError("User not found")
         return SuccessResponse(
-            message="Profile retrieved", data=UserResponse.model_validate(user)
+            message="Profile retrieved", data=UserResponse.model_validate(current_user)
         )
     except Exception as e:
         return handle_service_error(e)
@@ -166,10 +178,9 @@ async def get_me(
 async def list_users(
     skip: int = 0,
     limit: int = 100,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("users.read")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
-    # Role check placeholder here
     try:
         users = await service.user_repo.list(skip=skip, limit=limit)
         return SuccessResponse(
@@ -183,7 +194,7 @@ async def list_users(
 @users_router.get("/{id}", response_model=SuccessResponse[UserResponse])
 async def get_user(
     id: uuid.UUID,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("users.read")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -200,7 +211,7 @@ async def get_user(
 @users_router.post("", response_model=SuccessResponse[UserResponse], status_code=201)
 async def create_user(
     data: CreateUser,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("users.create")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -223,7 +234,7 @@ async def create_user(
 async def update_user(
     id: uuid.UUID,
     data: UpdateUser,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("users.update")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -244,7 +255,7 @@ async def update_user(
 @users_router.delete("/{id}", status_code=204)
 async def delete_user(
     id: uuid.UUID,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("users.delete")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -264,7 +275,7 @@ async def delete_user(
 # ---------------------------------------------------------
 @roles_router.get("", response_model=SuccessResponse[list[RoleResponse]])
 async def list_roles(
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("roles.read")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -280,7 +291,7 @@ async def list_roles(
 @roles_router.post("", response_model=SuccessResponse[RoleResponse], status_code=201)
 async def create_role(
     data: CreateRole,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("roles.create")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -297,7 +308,7 @@ async def create_role(
 async def update_role(
     id: uuid.UUID,
     data: UpdateRole,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("roles.update")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -318,7 +329,7 @@ async def update_role(
 @roles_router.delete("/{id}", status_code=204)
 async def delete_role(
     id: uuid.UUID,
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("roles.delete")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
@@ -339,7 +350,7 @@ async def delete_role(
 # ---------------------------------------------------------
 @perms_router.get("", response_model=SuccessResponse[list[PermissionResponse]])
 async def list_permissions(
-    user_id: uuid.UUID = Depends(get_current_user),
+    current_user: User = Depends(require_permission("permissions.read")),
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:

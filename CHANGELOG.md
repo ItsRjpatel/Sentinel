@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 ### Added
+- **M1.6 Authentication Infrastructure**:
+  - Centralized security exceptions (`AuthenticationError`, `InvalidTokenError`, `ExpiredTokenError`, etc.).
+  - Added strict JWT verification for both `access` and `refresh` token types.
+  - Implemented `get_current_user` dependency utilizing `OAuth2PasswordBearer` to resolve users dynamically.
+  - Implemented `require_permission` authorization dependency utilizing aggregated user permissions.
+  - Removed placeholder `dummy_user_id` inside `/refresh` endpoints.
 - **M1.5.1 API Validation**:
   - Fixed mock objects in tests to strictly conform to Pydantic field schemas (`is_verified`, `created_at`, `updated_at`).
   - Achieved 100% passing tests for the API router.

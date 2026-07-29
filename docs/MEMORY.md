@@ -21,6 +21,7 @@
 - **Milestone M1.4 Complete**: Dependency Injection Layer. Implemented `get_db()`, `get_auth_service()`, and repository providers in `dependencies.py`.
 - **Milestone M1.5A & M1.5B Complete**: Authentication API Specification and Router Implementation. Mapped all 15 API endpoints with standard response structures and exception handlers.
 - **Milestone M1.5.1 Complete**: Validation Review. Successfully validated 100% of endpoints against API specification. Test suite verified passing.
+- **Milestone M1.6 Complete**: JWT Authentication Infrastructure. Created centralized security exceptions, robust token decoding/verification, and reusable `get_current_user` and `require_permission` authorization dependencies.
 
 ## Next Steps
-- Wait for user instruction to begin Milestone M1.6 (JWT Authorization Middleware).
+- Wait for user instruction to begin Milestone M1.7 (Bootstrap Admin) or next architectural goal.

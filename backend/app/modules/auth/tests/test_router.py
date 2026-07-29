@@ -5,9 +5,8 @@ from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.modules.auth.dependencies import get_auth_service
+from app.modules.auth.dependencies import get_auth_service, get_current_user
 from app.modules.auth.models import Role, User
-from app.modules.auth.router import get_current_user
 
 # Mock service dependency
 mock_auth_service = AsyncMock()
@@ -17,12 +16,35 @@ def override_get_auth_service():
     return mock_auth_service
 
 
+# Return a fully valid User mock
 def override_get_current_user():
-    return uuid.uuid4()
+    return User(
+        id=uuid.uuid4(),
+        username="admin",
+        email="admin@example.com",
+        is_active=True,
+        is_verified=True,
+        roles=[],
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
 
 
 app.dependency_overrides[get_auth_service] = override_get_auth_service
 app.dependency_overrides[get_current_user] = override_get_current_user
+
+# Mock permissions so all tests pass the require_permission check
+mock_auth_service.get_current_permissions.return_value = [
+    "users.read",
+    "users.create",
+    "users.update",
+    "users.delete",
+    "roles.read",
+    "roles.create",
+    "roles.update",
+    "roles.delete",
+    "permissions.read",
+]
 
 client = TestClient(app)
 
@@ -46,18 +68,6 @@ def test_login_validation_error():
 
 
 def test_get_me_success():
-    mock_user = User(
-        id=uuid.uuid4(),
-        username="admin",
-        email="admin@example.com",
-        is_active=True,
-        is_verified=True,
-        roles=[],
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
-    mock_auth_service.user_repo.get_by_id.return_value = mock_user
-
     response = client.get("/api/v1/auth/me")
     assert response.status_code == 200
     data = response.json()

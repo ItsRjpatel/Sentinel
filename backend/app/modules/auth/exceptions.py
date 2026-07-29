@@ -1,17 +1,8 @@
+from app.core.exceptions import AuthenticationError
+
+
 class RepositoryError(Exception):
     """Base exception for all repository errors."""
-
-    pass
-
-
-class NotFoundError(RepositoryError):
-    """Raised when an entity is not found in the database."""
-
-    pass
-
-
-class DuplicateEntryError(RepositoryError):
-    """Raised when an entity violates a unique constraint."""
 
     pass
 
@@ -22,17 +13,25 @@ class IntegrityError(RepositoryError):
     pass
 
 
-class AuthenticationError(Exception):
+class DuplicateEntryError(RepositoryError):
+    """Raised when an entity violates a unique constraint."""
+
+    pass
+
+
+class NotFoundError(RepositoryError):
+    """Raised when an entity is not found in the database."""
+
     pass
 
 
 class InvalidCredentialsError(AuthenticationError):
-    pass
+    """Raised when login fails due to bad credentials."""
 
-
-class AccountLockedError(AuthenticationError):
     pass
 
 
 class UnauthorizedError(AuthenticationError):
+    """Raised when a user attempts an action without authorization."""
+
     pass

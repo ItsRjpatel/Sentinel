@@ -43,7 +43,13 @@ async def test_authenticate_success(auth_service: AuthenticationService) -> None
     user_id = uuid.uuid4()
     password = "SecurePassword123!"
     hashed = get_password_hash(password)
-    mock_user = User(id=user_id, username="admin", password_hash=hashed, is_active=True, failed_login_attempts=0)
+    mock_user = User(
+        id=user_id,
+        username="admin",
+        password_hash=hashed,
+        is_active=True,
+        failed_login_attempts=0,
+    )
 
     auth_service.user_repo.get_by_username = AsyncMock(return_value=mock_user)  # type: ignore
 
@@ -65,7 +71,13 @@ async def test_authenticate_invalid_password(
 ) -> None:
     user_id = uuid.uuid4()
     hashed = get_password_hash("DifferentPassword")
-    mock_user = User(id=user_id, username="admin", password_hash=hashed, is_active=True, failed_login_attempts=0)
+    mock_user = User(
+        id=user_id,
+        username="admin",
+        password_hash=hashed,
+        is_active=True,
+        failed_login_attempts=0,
+    )
 
     auth_service.user_repo.get_by_username = AsyncMock(return_value=mock_user)  # type: ignore
 
@@ -93,7 +105,13 @@ async def test_login(
     user_id = uuid.uuid4()
     password = "SecurePassword123!"
     hashed = get_password_hash(password)
-    mock_user = User(id=user_id, username="admin", password_hash=hashed, is_active=True, failed_login_attempts=0)
+    mock_user = User(
+        id=user_id,
+        username="admin",
+        password_hash=hashed,
+        is_active=True,
+        failed_login_attempts=0,
+    )
 
     auth_service.user_repo.get_by_username = AsyncMock(return_value=mock_user)  # type: ignore
     auth_service.user_repo.list_roles = AsyncMock(return_value=[Role(name="admin")])  # type: ignore

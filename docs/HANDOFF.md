@@ -1,13 +1,14 @@
 # Handoff
 ## Last Completed Task
-- **Task**: Sprint 1 M1.5.1 Authentication API Validation.
-- **Description**: Conducted a comprehensive validation of the Auth API including contract compliance, router review, schema validation, OpenAPI integrity check, and test verification. Fixed mock test data to strictly satisfy Pydantic validations. Verified that the architecture remains compliant with Feature-First principles and that all endpoints pass all validation metrics.
+- **Task**: Sprint 1 M1.6 Authentication Infrastructure
+- **Description**: Implemented robust JWT verification for access and refresh tokens. Established `get_current_user` and `require_permission` dependencies that safely extract, authenticate, and authorize requests using database verification. Centralized security exceptions. Removed the `dummy_user_id` refresh token placeholder.
 
 ## Current Repository Status
 - Backend architecture is Feature-First.
-- `app/modules/auth/router.py` correctly handles the REST HTTP layer for the authentication module with 0 business logic bleed.
-- All testing tools (`mypy`, `pytest`, `ruff`, `black`) report 100% success.
-- Ready for JWT Authorization Middleware implementation.
+- `app/core/security.py` handles token generation and verification.
+- `app/modules/auth/dependencies.py` enforces access control and validates users against the database.
+- The Authentication API is fully secured end-to-end with tests verifying positive and negative logic flows.
+- 100% test success across core security and auth router integrations.
 
 ## Next Task
-- **Milestone M1.6**: Implement JWT Middleware and Authorization guards (`get_current_user`). Wait for the user to explicitly start the next milestone.
+- **Milestone M1.7**: Bootstrap Admin (or subsequent authentication steps). Wait for architectural review before starting.

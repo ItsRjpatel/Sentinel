@@ -16,6 +16,6 @@
 - [x] **Milestone M1.4**: Dependency Injection Layer
 - [x] **Milestone M1.5A/B**: Authentication API Specification and Routers
 - [x] **Milestone M1.5.1**: Authentication API Validation
-- [ ] **Milestone M1.6**: JWT Authorization Middleware
+- [x] **Milestone M1.6**: JWT Authorization Middleware
   - [ ] **Milestone M1**: Authentication (Sprint 2) and JWT integration
   - Basic inventory logic

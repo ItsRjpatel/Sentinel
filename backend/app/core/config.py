@@ -27,8 +27,9 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "dummy-secret-key-for-local-dev-only"
-    JWT_SECRET_KEY: str = "dummy-jwt-secret-key-for-local-dev-only"
+    JWT_SECRET_KEY: str = "super-secret-key-for-local-dev-only"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
     ALGORITHM: str = "HS256"
 
     # CORS & Middleware
