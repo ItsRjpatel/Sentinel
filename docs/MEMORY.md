@@ -22,6 +22,7 @@
 - **Milestone M1.5A & M1.5B Complete**: Authentication API Specification and Router Implementation. Mapped all 15 API endpoints with standard response structures and exception handlers.
 - **Milestone M1.5.1 Complete**: Validation Review. Successfully validated 100% of endpoints against API specification. Test suite verified passing.
 - **Milestone M1.6 Complete**: JWT Authentication Infrastructure. Created centralized security exceptions, robust token decoding/verification, and reusable `get_current_user` and `require_permission` authorization dependencies.
+- **Milestone M1.7 Complete**: Bootstrap Admin & System Initialization. Created idempotent scripts to inject initial roles, permissions, and the super administrator, avoiding application startup pollution.
 
 ## Next Steps
-- Wait for user instruction to begin Milestone M1.7 (Bootstrap Admin) or next architectural goal.
+- Wait for user instruction to begin Milestone M1.8 (Integration Testing).

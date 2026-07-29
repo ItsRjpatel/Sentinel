@@ -17,5 +17,5 @@
 - [x] **Milestone M1.5A/B**: Authentication API Specification and Routers
 - [x] **Milestone M1.5.1**: Authentication API Validation
 - [x] **Milestone M1.6**: JWT Authorization Middleware
-  - [ ] **Milestone M1**: Authentication (Sprint 2) and JWT integration
+- [x] **Milestone M1.7**: Bootstrap Admin & System Initialization
   - Basic inventory logic

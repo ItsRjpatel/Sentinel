@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Added
+- **M1.7 Bootstrap Admin**:
+  - `backend/scripts/bootstrap.py` for idempotent initialization of default permissions and roles.
+  - `backend/scripts/bootstrap_admin.py` for dynamic creation of Super Admin via `BOOTSTRAP_ADMIN_PASSWORD`.
+  - `backend/scripts/check_installation.py` to verify DB connection, alembic head, env variables, and required defaults.
+  - Test suite `backend/tests/bootstrap/test_bootstrap.py` confirming idempotency and logic integrity.
 - **M1.6 Authentication Infrastructure**:
   - Centralized security exceptions (`AuthenticationError`, `InvalidTokenError`, `ExpiredTokenError`, etc.).
   - Added strict JWT verification for both `access` and `refresh` token types.
