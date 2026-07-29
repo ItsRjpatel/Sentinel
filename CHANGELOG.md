@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- **M1.2 Auth Repositories**:
+  - Implemented `UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`.
+  - Added custom `RepositoryError`, `NotFoundError`, `DuplicateEntryError`, `IntegrityError`.
 - **M1.1 Identity & Access**:
   - Implemented `User`, `Role`, `Permission`, `RefreshToken` SQLAlchemy models.
   - Implemented `BaseModelMixin` with UUID, audit fields, and soft deletion.

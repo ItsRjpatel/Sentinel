@@ -9,7 +9,8 @@
 
 ## Pending
 - [x] **Milestone M1.1**: Identity & Access (Database Layer)
-- [ ] **Milestone M1.2**: Identity & Access (Authentication & API)
-- Sprint 2: Core Feature Implementation
+- [x] **Milestone M1.1A**: Authentication Domain Architectural Review
+- [x] **Milestone M1.2**: Authentication Repository Layer
+- [ ] **Milestone M1.3**: Authentication Service Layer
   - [ ] **Milestone M1**: Authentication (Sprint 2) and JWT integration
   - Basic inventory logic

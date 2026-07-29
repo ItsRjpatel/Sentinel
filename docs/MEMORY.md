@@ -14,6 +14,8 @@
 - **Milestone M0.4 Complete**: Foundation Freeze applied. CI pipelines, docker skeletons, and developer config standardizations complete.
 - **Milestone M0.5 Complete**: Architecture Migration from Layered to Feature-First. `app/modules/` created, and `app/common/` established.
 - **Milestone M1.1 Complete**: Identity & Access Database Models (`User`, `Role`, `Permission`, `RefreshToken`) designed with Pydantic Schemas. Soft delete and UUID mixins successfully added to `app/common/models.py`. Validated via unit tests.
+- **Milestone M1.1A Complete**: Authentication Domain Architectural Review completed.
+- **Milestone M1.2 Complete**: Authentication Repository Layer (`UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`) implemented. Extracted SQLAlchemy exception mapping into `auth.exceptions`.
 
 ## Next Steps
-- Wait for user instruction to begin Milestone M1.2 (Authentication Services/JWT).
+- Wait for user instruction to begin Milestone M1.3 (Service Layer).
