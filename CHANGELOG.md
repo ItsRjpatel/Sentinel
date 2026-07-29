@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- **M1.5.1 API Validation**:
+  - Fixed mock objects in tests to strictly conform to Pydantic field schemas (`is_verified`, `created_at`, `updated_at`).
+  - Achieved 100% passing tests for the API router.
 - **M1.5 API Routers**:
   - Implemented 15 REST endpoints in `router.py`.
   - Added standardized `SuccessResponse` and `ErrorResponse` schemas.

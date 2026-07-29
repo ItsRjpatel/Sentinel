@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
@@ -50,6 +51,10 @@ def test_get_me_success():
         username="admin",
         email="admin@example.com",
         is_active=True,
+        is_verified=True,
+        roles=[],
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     mock_auth_service.user_repo.get_by_id.return_value = mock_user
 
@@ -66,6 +71,10 @@ def test_create_user_success():
         username="new_user",
         email="new@example.com",
         is_active=True,
+        is_verified=False,
+        roles=[],
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     mock_auth_service.create_user.return_value = mock_user
 
@@ -89,6 +98,10 @@ def test_list_users():
         username="admin",
         email="admin@example.com",
         is_active=True,
+        is_verified=True,
+        roles=[],
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
     )
     mock_auth_service.user_repo.list.return_value = [mock_user]
 
@@ -108,7 +121,13 @@ def test_delete_user():
 
 
 def test_list_roles():
-    mock_role = Role(id=uuid.uuid4(), name="admin")
+    mock_role = Role(
+        id=uuid.uuid4(),
+        name="admin",
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
     mock_auth_service.role_repo.list.return_value = [mock_role]
 
     response = client.get("/api/v1/roles")

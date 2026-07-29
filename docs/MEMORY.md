@@ -20,6 +20,7 @@
 - **Pre-M1.4 Consistency Complete**: Added `failed_login_attempts`, `locked_until`, `last_failed_login` to `User` model. Generated migration `5278bf03f271`.
 - **Milestone M1.4 Complete**: Dependency Injection Layer. Implemented `get_db()`, `get_auth_service()`, and repository providers in `dependencies.py`.
 - **Milestone M1.5A & M1.5B Complete**: Authentication API Specification and Router Implementation. Mapped all 15 API endpoints with standard response structures and exception handlers.
+- **Milestone M1.5.1 Complete**: Validation Review. Successfully validated 100% of endpoints against API specification. Test suite verified passing.
 
 ## Next Steps
 - Wait for user instruction to begin Milestone M1.6 (JWT Authorization Middleware).
