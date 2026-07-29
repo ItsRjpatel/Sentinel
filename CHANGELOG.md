@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- **M1.3 Auth Service**:
+  - Replaced `passlib` with `pwdlib` and `argon2-cffi`.
+  - Added `PyJWT` for JWT generation/validation.
+  - Implemented `AuthenticationService` logic and integration tests.
 - **M1.2 Auth Repositories**:
   - Implemented `UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`.
   - Added custom `RepositoryError`, `NotFoundError`, `DuplicateEntryError`, `IntegrityError`.

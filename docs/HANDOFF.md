@@ -1,14 +1,13 @@
 # Handoff
 ## Last Completed Task
-- **Task**: Milestone M1.2 Authentication Repository Layer.
-- **Description**: Implemented the repository pattern for `UserRepository`, `RoleRepository`, `PermissionRepository`, and `RefreshTokenRepository`. All repositories use `AsyncSession` to interact with the database without containing business logic. Custom repository exceptions were introduced to abstract SQLAlchemy errors.
+- **Task**: Milestone M1.3 Authentication Service Layer.
+- **Description**: Implemented `AuthenticationService` linking the domain logic with the auth repositories. Migrated from passlib to `pwdlib[argon2]`. Generated standard JSON Web Tokens configured with exact payload claims, and securely hashed long-lived refresh tokens. Fully unit-tested via mocked DB sessions.
 
 ## Current Repository Status
 - Backend architecture is Feature-First.
-- `app/modules/auth/repository.py` is fully implemented and tested with mock sessions.
-- Repositories are asynchronous, rely on dependency injection, and handle database relationships/cascades securely.
-- Project ready for Service Layer logic.
+- `app/modules/auth/service.py` is fully implemented and passes type hinting and tests.
+- Replaced `passlib` with `pwdlib`. Added `PyJWT`.
+- Ready for API Routing layer integration.
 
 ## Next Task
-- **Milestone M1.3**: Implement the Authentication Service Layer (JWT token generation, business logic, hashing algorithms).
-- Wait for the user to explicitly start the next milestone.
+- **Milestone M1.4**: Modify User schema for account security fields, configure the API router (`router.py`), and inject dependencies. Wait for the user to explicitly start the next milestone.

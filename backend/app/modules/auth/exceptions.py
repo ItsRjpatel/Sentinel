@@ -16,3 +16,19 @@ class DuplicateEntryError(RepositoryError):
 class IntegrityError(RepositoryError):
     """Raised when a database integrity constraint is violated."""
     pass
+
+
+class AuthenticationError(Exception):
+    pass
+
+
+class InvalidCredentialsError(AuthenticationError):
+    pass
+
+
+class AccountLockedError(AuthenticationError):
+    pass
+
+
+class UnauthorizedError(AuthenticationError):
+    pass

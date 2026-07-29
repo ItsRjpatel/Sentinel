@@ -16,6 +16,7 @@
 - **Milestone M1.1 Complete**: Identity & Access Database Models (`User`, `Role`, `Permission`, `RefreshToken`) designed with Pydantic Schemas. Soft delete and UUID mixins successfully added to `app/common/models.py`. Validated via unit tests.
 - **Milestone M1.1A Complete**: Authentication Domain Architectural Review completed.
 - **Milestone M1.2 Complete**: Authentication Repository Layer (`UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`) implemented. Extracted SQLAlchemy exception mapping into `auth.exceptions`.
+- **Milestone M1.3 Complete**: Authentication Service Layer (`AuthenticationService`, `pwdlib`, `PyJWT`) implemented to bridge the gap between HTTP APIs and Database logic.
 
 ## Next Steps
-- Wait for user instruction to begin Milestone M1.3 (Service Layer).
+- Wait for user instruction to begin Milestone M1.4 (API Router and final Security Models integration).
