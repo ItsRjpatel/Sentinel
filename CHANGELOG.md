@@ -23,6 +23,10 @@
 - **M1.4 Dependency Injection**:
   - Implemented `dependencies.py` providing `Depends()` for repositories and `AuthenticationService`.
   - Added DI wiring tests.
+### Fixed
+- Fixed `MissingGreenlet` lazy load error in `bootstrap.py` and `bootstrap_admin.py` when assigning roles and permissions.
+- **M1.8A Database Migration Recovery**: Restored the missing initial database migration. Merged orphaned `add_account_locking_fields_to_user` into a single, unified `initial_schema` migration baseline to cleanly recreate `users`, `roles`, `permissions`, and `refresh_tokens`.
+- Separated business logic (`AuthenticationService`) from HTTP mechanics (`router.py`).
 - **Pre-M1.4 Auth Consistency**:
   - Added `failed_login_attempts`, `last_failed_login`, and `locked_until` to `User` model.
   - Implemented `5278bf03f271` Alembic migration.

@@ -1,7 +1,9 @@
 # Handoff
 ## Last Completed Task
-- **Task**: Sprint 1 M1.7 Bootstrap Admin & System Initialization
-- **Description**: Implemented standalone bootstrap scripts to initialize the database with default roles, explicit permissions, and a super administrator user. Created an idempotent setup, ensuring the system can be rerun without duplicating data. Added an installation checker to verify core data and configuration. All tests passed.
+- **M1.7 Bootstrap**: Complete.
+- **M1.8A Database Migration Recovery**: Complete. Initial database migration baseline is restored on Neon PostgreSQL. `bootstrap.py` is verified to be idempotent and properly load `user.roles` and `role.permissions`.
+- **M1.8 Integration Testing**: Pending restart after migration fix.
+- **M1.9 Foundation Freeze**: Pending.
 
 ## Current Repository Status
 - Backend architecture is Feature-First.

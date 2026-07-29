@@ -17,12 +17,16 @@
 - **Milestone M1.1A Complete**: Authentication Domain Architectural Review completed.
 - **Milestone M1.2 Complete**: Authentication Repository Layer (`UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`) implemented. Extracted SQLAlchemy exception mapping into `auth.exceptions`.
 - **Milestone M1.3 Complete**: Authentication Service Layer (`AuthenticationService`, `pwdlib`, `PyJWT`) implemented to bridge the gap between HTTP APIs and Database logic.
-- **Pre-M1.4 Consistency Complete**: Added `failed_login_attempts`, `locked_until`, `last_failed_login` to `User` model. Generated migration `5278bf03f271`.
-- **Milestone M1.4 Complete**: Dependency Injection Layer. Implemented `get_db()`, `get_auth_service()`, and repository providers in `dependencies.py`.
-- **Milestone M1.5A & M1.5B Complete**: Authentication API Specification and Router Implementation. Mapped all 15 API endpoints with standard response structures and exception handlers.
+- **Pre-M1.4 Auth Consistency**: Verified `failed_login_attempts`, `last_failed_login`, `locked_until` in user models.
+- **Sprint 1 M1.4 DI Layer**: Finished `dependencies.py` wiring `AuthenticationService`.
+- **Sprint 1 M1.5A/B API**: Finished Authentication API design and routing implementation.
 - **Milestone M1.5.1 Complete**: Validation Review. Successfully validated 100% of endpoints against API specification. Test suite verified passing.
+- **Sprint 1 M1.6 Infrastructure**: Completed Token and Security implementations.
 - **Milestone M1.6 Complete**: JWT Authentication Infrastructure. Created centralized security exceptions, robust token decoding/verification, and reusable `get_current_user` and `require_permission` authorization dependencies.
+- **Sprint 1 M1.7 Bootstrap**: Created standalone initialization scripts for idempotent database seeding.
 - **Milestone M1.7 Complete**: Bootstrap Admin & System Initialization. Created idempotent scripts to inject initial roles, permissions, and the super administrator, avoiding application startup pollution.
+- **M1.8A Migration Recovery**: Restored initial schema migration to `99fe757562ae_initial_schema.py` and validated on Neon PostgreSQL.
+- **Sprint 1 M1.8 Integration Testing**: Pending restart.
 
 ## Next Steps
 - Wait for user instruction to begin Milestone M1.8 (Integration Testing).

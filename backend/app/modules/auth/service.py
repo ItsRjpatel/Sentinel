@@ -5,9 +5,9 @@ from typing import Any, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import AccountLockedError
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.modules.auth.exceptions import (
-    AccountLockedError,
     InvalidCredentialsError,
     NotFoundError,
     UnauthorizedError,

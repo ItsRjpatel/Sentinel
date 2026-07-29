@@ -2,6 +2,9 @@ import asyncio
 import logging
 import os
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Ensure the backend directory is in sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -96,6 +99,8 @@ async def bootstrap_roles(
 
             # If Super Administrator, assign all permissions
             if role_name == "Super Administrator":
+                # Fetch role again to ensure permissions are loaded (avoid MissingGreenlet on lazy load)
+                role = await role_repo.get_by_name(role_name)
                 all_perms = await permission_repo.list(limit=1000)
                 for p in all_perms:
                     await role_repo.assign_permission(role, p)

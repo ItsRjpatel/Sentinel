@@ -44,6 +44,9 @@ async def create_super_admin(session: AsyncSession) -> None:
         user = await user_repo.create(admin_data)
         logger.info("Created user 'admin'.")
 
+        # Fetch user again to ensure roles are loaded
+        user = await user_repo.get_by_username("admin")
+
         # Assign Super Administrator role
         super_admin_role = await role_repo.get_by_name("Super Administrator")
         if super_admin_role:
