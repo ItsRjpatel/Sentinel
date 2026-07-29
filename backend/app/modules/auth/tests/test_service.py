@@ -154,7 +154,7 @@ async def test_refresh_session_success(
     auth_service.refresh_token_repo.create = AsyncMock()  # type: ignore
     mock_create_token.return_value = "new.jwt.token"
 
-    access, new_refresh = await auth_service.refresh_session(user_id, "hash")
+    access, new_refresh = await auth_service.refresh_session("raw_token")
 
     assert access == "new.jwt.token"
     auth_service.refresh_token_repo.revoke.assert_awaited_once_with(token_record)
@@ -173,4 +173,4 @@ async def test_refresh_session_revoked(auth_service: AuthenticationService) -> N
     auth_service.refresh_token_repo.get_by_hash = AsyncMock(return_value=token_record)  # type: ignore
 
     with pytest.raises(UnauthorizedError):
-        await auth_service.refresh_session(user_id, "hash")
+        await auth_service.refresh_session("raw_token")

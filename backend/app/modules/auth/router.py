@@ -11,7 +11,6 @@ from app.core.exceptions import (
     InvalidTokenError,
     PermissionDeniedError,
 )
-from app.core.security import verify_refresh_token
 from app.modules.auth.dependencies import (
     get_auth_service,
     get_current_user,
@@ -106,20 +105,9 @@ async def refresh(
     data: RefreshRequest, service: AuthenticationService = Depends(get_auth_service)
 ):
     try:
-        # Verify the token natively and extract the real user_id
-        payload = verify_refresh_token(data.refresh_token)
-        user_id_str = payload.get("sub")
-        if not user_id_str:
-            raise InvalidTokenError("Refresh token missing 'sub' claim")
-
-        try:
-            real_user_id = uuid.UUID(user_id_str)
-        except ValueError:
-            raise InvalidTokenError("Invalid 'sub' claim format")
-
-        access_token, new_refresh = await service.refresh_session(
-            real_user_id, data.refresh_token
-        )
+        # The refresh token is an opaque hex string, not a JWT.
+        # The service resolves the user_id from the DB record directly.
+        access_token, new_refresh = await service.refresh_session(data.refresh_token)
         return SuccessResponse(
             message="Session refreshed",
             data=TokenPair(access_token=access_token, refresh_token=new_refresh),
@@ -135,10 +123,8 @@ async def logout(
     service: AuthenticationService = Depends(get_auth_service),
 ):
     try:
-        from app.core.security import get_password_hash
-
-        token_hash = get_password_hash(data.refresh_token)
-        await service.logout(current_user.id, token_hash)
+        # Hashing is done inside service.logout; do not re-hash here.
+        await service.logout(current_user.id, data.refresh_token)
         return SuccessResponse(message="Logout successful", data={})
     except Exception as e:
         return handle_service_error(e)

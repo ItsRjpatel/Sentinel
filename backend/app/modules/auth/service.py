@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -5,7 +6,7 @@ from typing import Any, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import AccountLockedError
+from app.core.exceptions import AccountLockedError, InactiveUserError
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.modules.auth.exceptions import (
     InvalidCredentialsError,
@@ -19,6 +20,16 @@ from app.modules.auth.repository import (
     RoleRepository,
     UserRepository,
 )
+
+
+def _hash_refresh_token(raw_token: str) -> str:
+    """Returns SHA-256 hex digest of raw_token for deterministic DB lookup.
+
+    Argon2/bcrypt are intentionally non-deterministic (salted) and cannot be
+    used for equality-based database lookups.  SHA-256 is the correct primitive
+    for opaque bearer tokens: fast, deterministic, and collision-resistant.
+    """
+    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 class AuthenticationService:
@@ -40,6 +51,9 @@ class AuthenticationService:
         user = await self.user_repo.get_by_username(username)
         if not user:
             raise InvalidCredentialsError("Invalid username or password")
+
+        if not user.is_active:
+            raise InactiveUserError("User account is disabled or deleted")
 
         if user.locked_until and user.locked_until > datetime.now(timezone.utc):
             raise AccountLockedError("Account is temporarily locked")
@@ -89,9 +103,9 @@ class AuthenticationService:
         return user
 
     async def create_refresh_token(self, user_id: uuid.UUID) -> str:
-        """Generates a secure refresh token and persists its hash."""
+        """Generates a secure opaque refresh token and persists its SHA-256 hash."""
         token = secrets.token_hex(32)
-        token_hash = get_password_hash(token)
+        token_hash = _hash_refresh_token(token)
 
         expiry = datetime.now(timezone.utc) + timedelta(
             days=7
@@ -101,7 +115,7 @@ class AuthenticationService:
             {"user_id": user_id, "token_hash": token_hash, "expiry": expiry}
         )
 
-        # Don't commit yet, wait for caller to commit to maintain atomicity with access token issuance
+        # Don't commit yet — caller commits atomically with access token issuance
         return token
 
     async def login(self, username: str, password: str) -> Tuple[str, str]:
@@ -115,12 +129,14 @@ class AuthenticationService:
         await self.session.commit()
         return access_token, refresh_token
 
-    async def refresh_session(
-        self, user_id: uuid.UUID, old_refresh_token_hash: str
-    ) -> Tuple[str, str]:
-        """Refresh token rotation implementation."""
-        # Find the token
-        token_record = await self.refresh_token_repo.get_by_hash(old_refresh_token_hash)
+    async def refresh_session(self, raw_refresh_token: str) -> Tuple[str, str]:
+        """Refresh token rotation: revoke old token, issue new pair.
+
+        The user identity is resolved from the stored token record — the caller
+        does NOT supply a user_id, avoiding the need for a JWT in the request.
+        """
+        token_hash = _hash_refresh_token(raw_refresh_token)
+        token_record = await self.refresh_token_repo.get_by_hash(token_hash)
         if (
             not token_record
             or token_record.revoked
@@ -128,14 +144,14 @@ class AuthenticationService:
         ):
             raise UnauthorizedError("Invalid or expired refresh token")
 
-        if token_record.user_id != user_id:
-            raise UnauthorizedError("Invalid token ownership")
+        # user_id comes from the stored record — not from a JWT claim
+        resolved_user_id = token_record.user_id
 
         # Revoke the old token
         await self.refresh_token_repo.revoke(token_record)
 
         # Generate new session pair
-        user = await self.user_repo.get_by_id(user_id)
+        user = await self.user_repo.get_by_id(resolved_user_id)
         if not user:
             raise NotFoundError("User not found")
 
@@ -146,7 +162,8 @@ class AuthenticationService:
         await self.session.commit()
         return access_token, new_refresh_token
 
-    async def logout(self, user_id: uuid.UUID, token_hash: str) -> None:
+    async def logout(self, user_id: uuid.UUID, raw_refresh_token: str) -> None:
+        token_hash = _hash_refresh_token(raw_refresh_token)
         token_record = await self.refresh_token_repo.get_by_hash(token_hash)
         if token_record and token_record.user_id == user_id:
             await self.refresh_token_repo.revoke(token_record)

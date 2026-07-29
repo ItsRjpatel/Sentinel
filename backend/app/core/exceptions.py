@@ -75,6 +75,39 @@ def setup_exception_handlers(app: FastAPI) -> None:
             content={"detail": "Validation Error", "errors": exc.errors()},
         )
 
+    @app.exception_handler(SentinelException)
+    async def sentinel_exception_handler(
+        request: Request, exc: SentinelException
+    ) -> JSONResponse:
+        from app.common.schemas import ErrorResponse
+        
+        status_code = 500
+        error_code = "INTERNAL_ERROR"
+        
+        if isinstance(exc, PermissionDeniedError):
+            status_code = 403
+            error_code = "FORBIDDEN"
+        elif isinstance(exc, (InvalidTokenError, ExpiredTokenError, AuthenticationError)):
+            status_code = 401
+            error_code = "UNAUTHORIZED"
+        elif isinstance(exc, InactiveUserError):
+            status_code = 401
+            error_code = "AUTH_INACTIVE_USER"
+        elif isinstance(exc, AccountLockedError):
+            status_code = 401
+            error_code = "AUTH_ACCOUNT_LOCKED"
+            
+        error_resp = ErrorResponse(
+            error_code=error_code,
+            message=str(exc),
+            errors=[]
+        )
+        logger.error(f"SentinelException on {request.url.path}: {str(exc)}")
+        return JSONResponse(
+            status_code=status_code,
+            content=error_resp.model_dump(mode="json"),
+        )
+
     @app.exception_handler(Exception)
     async def global_exception_handler(
         request: Request, exc: Exception
