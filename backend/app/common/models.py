@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Uuid
+from sqlalchemy import Boolean, DateTime, ForeignKey, Uuid
 from sqlalchemy.orm import Mapped, declarative_mixin, declared_attr, mapped_column
 
 
@@ -39,13 +38,17 @@ class AuditMixin:
     @declared_attr
     def created_by(cls) -> Mapped[uuid.UUID | None]:
         return mapped_column(
-            Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+            Uuid(as_uuid=True),
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
         )
 
     @declared_attr
     def updated_by(cls) -> Mapped[uuid.UUID | None]:
         return mapped_column(
-            Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+            Uuid(as_uuid=True),
+            ForeignKey("users.id", ondelete="SET NULL"),
+            nullable=True,
         )
 
 
@@ -61,4 +64,5 @@ class SoftDeleteMixin:
 
 class BaseModelMixin(UUIDMixin, TimestampMixin, AuditMixin, SoftDeleteMixin):
     """A convenient base mixin combining all standard fields."""
+
     pass

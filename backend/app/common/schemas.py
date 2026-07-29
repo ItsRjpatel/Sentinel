@@ -1,7 +1,8 @@
-from datetime import datetime
-from uuid import UUID
+from datetime import datetime, timezone
+from typing import Any, Generic, TypeVar
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CoreModel(BaseModel):
@@ -22,3 +23,27 @@ class BaseResponseSchema(TimestampSchema):
 
     id: UUID
     is_active: bool
+
+
+T = TypeVar("T")
+
+
+class SuccessResponse(BaseModel, Generic[T]):
+    """Standardized success response wrapper."""
+
+    success: bool = True
+    request_id: UUID = Field(default_factory=uuid4)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    message: str
+    data: T | dict[str, Any] = Field(default_factory=dict)
+
+
+class ErrorResponse(BaseModel):
+    """Standardized error response wrapper."""
+
+    success: bool = False
+    request_id: UUID = Field(default_factory=uuid4)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    error_code: str
+    message: str
+    errors: list[Any] = Field(default_factory=list)

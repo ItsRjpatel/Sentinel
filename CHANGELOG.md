@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 ### Added
+- **M1.5 API Routers**:
+  - Implemented 15 REST endpoints in `router.py`.
+  - Added standardized `SuccessResponse` and `ErrorResponse` schemas.
+  - Implemented service exception mapping for standard HTTP codes.
+- **M1.4 Dependency Injection**:
+  - Implemented `dependencies.py` providing `Depends()` for repositories and `AuthenticationService`.
+  - Added DI wiring tests.
+- **Pre-M1.4 Auth Consistency**:
+  - Added `failed_login_attempts`, `last_failed_login`, and `locked_until` to `User` model.
+  - Implemented `5278bf03f271` Alembic migration.
 - **M1.3 Auth Service**:
   - Replaced `passlib` with `pwdlib` and `argon2-cffi`.
   - Added `PyJWT` for JWT generation/validation.

@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 
-from app.modules.monitoring.router import router as monitoring_router
+from app.common.middleware import setup_middlewares
 from app.core.config import settings
 from app.core.exceptions import setup_exception_handlers
 from app.core.lifespan import lifespan
-from app.common.middleware import setup_middlewares
+from app.modules.auth.router import router as auth_router
+from app.modules.monitoring.router import router as monitoring_router
 
 
 def create_app() -> FastAPI:
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
 
     # Routers
     app.include_router(monitoring_router, prefix=settings.API_PREFIX)
+    app.include_router(auth_router, prefix=settings.API_PREFIX)
 
     return app
 

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Integer
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.models import BaseModelMixin
@@ -11,17 +11,29 @@ from app.db.base import Base
 class User(BaseModelMixin, Base):
     __tablename__ = "users"
 
-    username: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    username: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    last_failed_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    last_failed_login: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     roles: Mapped[list["Role"]] = relationship(
@@ -33,8 +45,8 @@ class User(BaseModelMixin, Base):
         lazy="selectin",
     )
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
-        "RefreshToken", 
-        back_populates="user", 
+        "RefreshToken",
+        back_populates="user",
         cascade="all, delete-orphan",
         foreign_keys="[RefreshToken.user_id]",
     )
@@ -43,7 +55,9 @@ class User(BaseModelMixin, Base):
 class Role(BaseModelMixin, Base):
     __tablename__ = "roles"
 
-    name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationships
@@ -67,7 +81,9 @@ class Role(BaseModelMixin, Base):
 class Permission(BaseModelMixin, Base):
     __tablename__ = "permissions"
 
-    name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True, nullable=False
+    )
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationships
@@ -105,7 +121,9 @@ class RolePermission(BaseModelMixin, Base):
 class RefreshToken(BaseModelMixin, Base):
     __tablename__ = "refresh_tokens"
 
-    token_hash: Mapped[str] = mapped_column(String(512), unique=True, index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(
+        String(512), unique=True, index=True, nullable=False
+    )
     expiry: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -113,7 +131,7 @@ class RefreshToken(BaseModelMixin, Base):
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user: Mapped["User"] = relationship(
-        "User", 
+        "User",
         back_populates="refresh_tokens",
         foreign_keys="[RefreshToken.user_id]",
     )

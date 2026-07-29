@@ -6,7 +6,11 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError as SAIntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.exceptions import DuplicateEntryError, IntegrityError, NotFoundError
+from app.modules.auth.exceptions import (
+    DuplicateEntryError,
+    IntegrityError,
+    NotFoundError,
+)
 from app.modules.auth.models import Permission, RefreshToken, Role, User
 
 
@@ -20,8 +24,13 @@ class UserRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
-                raise DuplicateEntryError("User with this username or email already exists.")
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
+                raise DuplicateEntryError(
+                    "User with this username or email already exists."
+                )
             raise IntegrityError(str(e.orig))
         return user
 
@@ -51,8 +60,13 @@ class UserRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
-                raise DuplicateEntryError("User with this username or email already exists.")
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
+                raise DuplicateEntryError(
+                    "User with this username or email already exists."
+                )
             raise IntegrityError(str(e.orig))
         return user
 
@@ -102,7 +116,10 @@ class RoleRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
                 raise DuplicateEntryError("Role with this name already exists.")
             raise IntegrityError(str(e.orig))
         return role
@@ -128,7 +145,10 @@ class RoleRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
                 raise DuplicateEntryError("Role with this name already exists.")
             raise IntegrityError(str(e.orig))
         return role
@@ -171,23 +191,35 @@ class PermissionRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
                 raise DuplicateEntryError("Permission with this name already exists.")
             raise IntegrityError(str(e.orig))
         return permission
 
     async def get_by_name(self, name: str) -> Permission | None:
-        stmt = select(Permission).where(Permission.name == name, Permission.deleted_at.is_(None))
+        stmt = select(Permission).where(
+            Permission.name == name, Permission.deleted_at.is_(None)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().first()
-        
+
     async def get_by_id(self, permission_id: uuid.UUID) -> Permission | None:
-        stmt = select(Permission).where(Permission.id == permission_id, Permission.deleted_at.is_(None))
+        stmt = select(Permission).where(
+            Permission.id == permission_id, Permission.deleted_at.is_(None)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
     async def list(self, skip: int = 0, limit: int = 100) -> Sequence[Permission]:
-        stmt = select(Permission).where(Permission.deleted_at.is_(None)).offset(skip).limit(limit)
+        stmt = (
+            select(Permission)
+            .where(Permission.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
@@ -197,7 +229,10 @@ class PermissionRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
                 raise DuplicateEntryError("Permission with this name already exists.")
             raise IntegrityError(str(e.orig))
         return permission
@@ -207,7 +242,9 @@ class PermissionRepository:
         await self.session.flush()
 
     async def exists(self, permission_id: uuid.UUID) -> bool:
-        stmt = select(Permission.id).where(Permission.id == permission_id, Permission.deleted_at.is_(None))
+        stmt = select(Permission.id).where(
+            Permission.id == permission_id, Permission.deleted_at.is_(None)
+        )
         result = await self.session.execute(stmt)
         return result.first() is not None
 
@@ -222,7 +259,10 @@ class RefreshTokenRepository:
         try:
             await self.session.flush()
         except SAIntegrityError as e:
-            if "unique constraint" in str(e.orig).lower() or "duplicate key" in str(e.orig).lower():
+            if (
+                "unique constraint" in str(e.orig).lower()
+                or "duplicate key" in str(e.orig).lower()
+            ):
                 raise DuplicateEntryError("Refresh token already exists.")
             raise IntegrityError(str(e.orig))
         return token
@@ -238,7 +278,9 @@ class RefreshTokenRepository:
         return token
 
     async def revoke_all(self, user_id: uuid.UUID) -> None:
-        stmt = select(RefreshToken).where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+        stmt = select(RefreshToken).where(
+            RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False)
+        )
         result = await self.session.execute(stmt)
         tokens = result.scalars().all()
         for token in tokens:

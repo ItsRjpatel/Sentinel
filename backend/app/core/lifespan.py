@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
-
 from typing import AsyncGenerator
+
 from fastapi import FastAPI
 
 from app.core.logger import setup_logging

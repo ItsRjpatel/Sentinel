@@ -17,6 +17,9 @@
 - **Milestone M1.1A Complete**: Authentication Domain Architectural Review completed.
 - **Milestone M1.2 Complete**: Authentication Repository Layer (`UserRepository`, `RoleRepository`, `PermissionRepository`, `RefreshTokenRepository`) implemented. Extracted SQLAlchemy exception mapping into `auth.exceptions`.
 - **Milestone M1.3 Complete**: Authentication Service Layer (`AuthenticationService`, `pwdlib`, `PyJWT`) implemented to bridge the gap between HTTP APIs and Database logic.
+- **Pre-M1.4 Consistency Complete**: Added `failed_login_attempts`, `locked_until`, `last_failed_login` to `User` model. Generated migration `5278bf03f271`.
+- **Milestone M1.4 Complete**: Dependency Injection Layer. Implemented `get_db()`, `get_auth_service()`, and repository providers in `dependencies.py`.
+- **Milestone M1.5A & M1.5B Complete**: Authentication API Specification and Router Implementation. Mapped all 15 API endpoints with standard response structures and exception handlers.
 
 ## Next Steps
-- Wait for user instruction to begin Milestone M1.4 (API Router and final Security Models integration).
+- Wait for user instruction to begin Milestone M1.6 (JWT Authorization Middleware).

@@ -1,10 +1,9 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from typing import Any
 
 from app.core.config import settings
 from app.core.constants import (

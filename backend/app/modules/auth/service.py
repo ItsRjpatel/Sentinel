@@ -1,23 +1,18 @@
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.modules.auth.exceptions import (
-    DuplicateEntryError,
-    IntegrityError,
-    NotFoundError,
-    RepositoryError,
-    AuthenticationError,
-    InvalidCredentialsError,
     AccountLockedError,
+    InvalidCredentialsError,
+    NotFoundError,
     UnauthorizedError,
 )
-from app.modules.auth.models import RefreshToken, Role, User
+from app.modules.auth.models import User
 from app.modules.auth.repository import (
     PermissionRepository,
     RefreshTokenRepository,
@@ -25,13 +20,21 @@ from app.modules.auth.repository import (
     UserRepository,
 )
 
+
 class AuthenticationService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        user_repo: UserRepository,
+        role_repo: RoleRepository,
+        permission_repo: PermissionRepository,
+        refresh_token_repo: RefreshTokenRepository,
+    ) -> None:
         self.session = session
-        self.user_repo = UserRepository(session)
-        self.role_repo = RoleRepository(session)
-        self.permission_repo = PermissionRepository(session)
-        self.refresh_token_repo = RefreshTokenRepository(session)
+        self.user_repo = user_repo
+        self.role_repo = role_repo
+        self.permission_repo = permission_repo
+        self.refresh_token_repo = refresh_token_repo
 
     async def authenticate(self, username: str, password: str) -> User:
         user = await self.user_repo.get_by_username(username)
@@ -45,10 +48,12 @@ class AuthenticationService:
             attempts = user.failed_login_attempts + 1
             updates = {
                 "failed_login_attempts": attempts,
-                "last_failed_login": datetime.now(timezone.utc)
+                "last_failed_login": datetime.now(timezone.utc),
             }
             if attempts >= 5:
-                updates["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=15)
+                updates["locked_until"] = datetime.now(timezone.utc) + timedelta(
+                    minutes=15
+                )
             await self.user_repo.update(user, updates)
             await self.session.commit()
             raise InvalidCredentialsError("Invalid username or password")
@@ -56,19 +61,22 @@ class AuthenticationService:
         updates = {
             "failed_login_attempts": 0,
             "last_failed_login": None,
-            "last_login": datetime.now(timezone.utc)
+            "last_login": datetime.now(timezone.utc),
         }
         await self.user_repo.update(user, updates)
-        
+
         return user
-    async def create_user(self, data: dict[str, Any], assign_default_roles: List[str] = []) -> User:
+
+    async def create_user(
+        self, data: dict[str, Any], assign_default_roles: List[str] = []
+    ) -> User:
         """Creates a new user. Restricted to Admins in production."""
         if "password" not in data:
             raise ValueError("Password is required")
-        
+
         raw_password = data.pop("password")
         data["password_hash"] = get_password_hash(raw_password)
-        
+
         user = await self.user_repo.create(data)
 
         for role_name in assign_default_roles:
@@ -84,36 +92,42 @@ class AuthenticationService:
         """Generates a secure refresh token and persists its hash."""
         token = secrets.token_hex(32)
         token_hash = get_password_hash(token)
-        
-        expiry = datetime.now(timezone.utc) + timedelta(days=7) # configurable via settings in the future
-        
-        await self.refresh_token_repo.create({
-            "user_id": user_id,
-            "token_hash": token_hash,
-            "expiry": expiry
-        })
-        
+
+        expiry = datetime.now(timezone.utc) + timedelta(
+            days=7
+        )  # configurable via settings in the future
+
+        await self.refresh_token_repo.create(
+            {"user_id": user_id, "token_hash": token_hash, "expiry": expiry}
+        )
+
         # Don't commit yet, wait for caller to commit to maintain atomicity with access token issuance
         return token
 
     async def login(self, username: str, password: str) -> Tuple[str, str]:
         """Authenticates user and returns (access_token, refresh_token)."""
         user = await self.authenticate(username, password)
-        
+
         roles = [r.name for r in await self.user_repo.list_roles(user.id)]
         access_token = create_access_token(user.id, user.username, roles)
         refresh_token = await self.create_refresh_token(user.id)
-        
+
         await self.session.commit()
         return access_token, refresh_token
 
-    async def refresh_session(self, user_id: uuid.UUID, old_refresh_token_hash: str) -> Tuple[str, str]:
+    async def refresh_session(
+        self, user_id: uuid.UUID, old_refresh_token_hash: str
+    ) -> Tuple[str, str]:
         """Refresh token rotation implementation."""
         # Find the token
         token_record = await self.refresh_token_repo.get_by_hash(old_refresh_token_hash)
-        if not token_record or token_record.revoked or token_record.expiry < datetime.now(timezone.utc):
+        if (
+            not token_record
+            or token_record.revoked
+            or token_record.expiry < datetime.now(timezone.utc)
+        ):
             raise UnauthorizedError("Invalid or expired refresh token")
-            
+
         if token_record.user_id != user_id:
             raise UnauthorizedError("Invalid token ownership")
 
@@ -124,11 +138,11 @@ class AuthenticationService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
+
         roles = [r.name for r in await self.user_repo.list_roles(user.id)]
         access_token = create_access_token(user.id, user.username, roles)
         new_refresh_token = await self.create_refresh_token(user.id)
-        
+
         await self.session.commit()
         return access_token, new_refresh_token
 
@@ -138,31 +152,33 @@ class AuthenticationService:
             await self.refresh_token_repo.revoke(token_record)
             await self.session.commit()
 
-    async def change_password(self, user_id: uuid.UUID, old_password: str, new_password: str) -> None:
+    async def change_password(
+        self, user_id: uuid.UUID, old_password: str, new_password: str
+    ) -> None:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
+
         if not verify_password(old_password, user.password_hash):
             raise InvalidCredentialsError("Invalid old password")
-            
+
         new_hash = get_password_hash(new_password)
         await self.user_repo.update(user, {"password_hash": new_hash})
-        
+
         # Optionally revoke all refresh tokens for security
         await self.refresh_token_repo.revoke_all(user_id)
-        
+
         await self.session.commit()
 
     async def assign_role(self, user_id: uuid.UUID, role_name: str) -> None:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
+
         role = await self.role_repo.get_by_name(role_name)
         if not role:
             raise NotFoundError("Role not found")
-            
+
         await self.user_repo.assign_role(user, role)
         await self.session.commit()
 
@@ -170,11 +186,11 @@ class AuthenticationService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
+
         role = await self.role_repo.get_by_name(role_name)
         if not role:
             raise NotFoundError("Role not found")
-            
+
         await self.user_repo.remove_role(user, role)
         await self.session.commit()
 
@@ -191,12 +207,16 @@ class AuthenticationService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
-        await self.user_repo.update(user, {
-            "is_active": False,
-            "locked_until": datetime.now(timezone.utc) + timedelta(days=3650)  # Locked effectively indefinitely
-        })
-        
+
+        await self.user_repo.update(
+            user,
+            {
+                "is_active": False,
+                "locked_until": datetime.now(timezone.utc)
+                + timedelta(days=3650),  # Locked effectively indefinitely
+            },
+        )
+
         await self.refresh_token_repo.revoke_all(user_id)
         await self.session.commit()
 
@@ -204,11 +224,14 @@ class AuthenticationService:
         user = await self.user_repo.get_by_id(user_id)
         if not user:
             raise NotFoundError("User not found")
-            
-        await self.user_repo.update(user, {
-            "is_active": True,
-            "locked_until": None,
-            "failed_login_attempts": 0,
-            "last_failed_login": None
-        })
+
+        await self.user_repo.update(
+            user,
+            {
+                "is_active": True,
+                "locked_until": None,
+                "failed_login_attempts": 0,
+                "last_failed_login": None,
+            },
+        )
         await self.session.commit()
