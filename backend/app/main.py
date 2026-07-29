@@ -7,6 +7,7 @@ from app.core.lifespan import lifespan
 from app.modules.auth.router import router as auth_router
 from app.modules.monitoring.router import router as monitoring_router
 from app.modules.endpoints.router import router as endpoints_router
+from app.modules.inventory.router import router as inventory_router
 
 
 def create_app() -> FastAPI:
@@ -28,6 +29,7 @@ def create_app() -> FastAPI:
     app.include_router(monitoring_router, prefix=settings.API_PREFIX)
     app.include_router(auth_router, prefix=settings.API_PREFIX)
     app.include_router(endpoints_router, prefix=settings.API_PREFIX)
+    app.include_router(inventory_router, prefix=settings.API_PREFIX)
 
     return app
 

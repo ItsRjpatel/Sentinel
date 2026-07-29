@@ -15,6 +15,8 @@ from agent.communication.client import AgentHTTPClient
 from agent.communication.enrollment import EnrollmentManager
 from agent.scheduler.scheduler import Scheduler
 from agent.scheduler.heartbeat import HeartbeatTask
+from agent.collectors.hardware.collector import HardwareCollector
+from agent.scheduler.hardware_task import HardwareInventoryTask
 
 logger = logging.getLogger("agent.main")
 
@@ -64,7 +66,7 @@ async def async_service_start() -> None:
         except Exception as e:
             logger.error(f"Initial enrollment failed: {e}. Retry scheduled on heartbeat loop.")
 
-    # 7. Initialize Heartbeat Service and Scheduler Container
+    # 7. Initialize Heartbeat, Hardware Collector, and Scheduler Container
     container.heartbeat_service = HeartbeatTask(
         interval_seconds=config.heartbeat_interval_seconds,
         client=container.http_client,
@@ -73,11 +75,21 @@ async def async_service_start() -> None:
         config_version=config.config_version
     )
 
+    collector = HardwareCollector()
+    container.hardware_inventory_task = HardwareInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=collector
+    )
+
     container.scheduler = Scheduler()
     container.scheduler.register_task(container.heartbeat_service)
+    container.scheduler.register_task(container.hardware_inventory_task)
 
-    # 8. Start Async Scheduler execution loop
+    # 8. Start Async Scheduler execution loop and run initial collection immediately
     await container.scheduler.start()
+    asyncio.create_task(container.hardware_inventory_task.execute())
     logger.info("Sentinel Agent successfully started.")
 
     # Block thread until stop signal is sent
