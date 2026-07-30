@@ -1,0 +1,85 @@
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime, timedelta, timezone
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.modules.commands.repository import CommandRepository
+from app.modules.commands.models import Command
+from app.modules.commands.schemas import CommandCreate, CommandStatusUpdate
+from app.modules.commands.enums import CommandStatus
+from app.modules.endpoints.models import Endpoint
+
+class CommandService:
+    def __init__(self, session: Session):
+        self.session = session
+        self.repository = CommandRepository(session)
+
+    def _get_utc_now(self):
+        return datetime.now(timezone.utc)
+
+    def queue_command(self, cmd_in: CommandCreate) -> Command:
+        # 1. Validate endpoint exists
+        endpoint = self.session.query(Endpoint).filter(Endpoint.id == cmd_in.endpoint_id).first()
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Endpoint {cmd_in.endpoint_id} not found."
+            )
+
+        # 2. Prevent duplicate pending inventory commands
+        if cmd_in.command_type == "RUN_INVENTORY":
+            pending_commands = self.repository.get_pending_for_endpoint(
+                endpoint_id=cmd_in.endpoint_id, 
+                command_type="RUN_INVENTORY"
+            )
+            if pending_commands:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A RUN_INVENTORY command is already pending for this endpoint."
+                )
+
+        # 3. Calculate expiration
+        expires_at = None
+        if cmd_in.expires_in_seconds:
+            expires_at = self._get_utc_now() + timedelta(seconds=cmd_in.expires_in_seconds)
+
+        command = Command(
+            endpoint_id=cmd_in.endpoint_id,
+            command_type=cmd_in.command_type.value,
+            payload=cmd_in.payload,
+            created_by=cmd_in.created_by,
+            expires_at=expires_at,
+            status=CommandStatus.PENDING
+        )
+
+        return self.repository.create(command)
+
+    def get_command(self, command_id: UUID) -> Command:
+        command = self.repository.get_by_id(command_id)
+        if not command:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Command not found."
+            )
+        return command
+
+    def cancel_command(self, command_id: UUID) -> Command:
+        command = self.get_command(command_id)
+        if command.status != CommandStatus.PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot cancel command in status {command.status}."
+            )
+        return self.repository.mark_cancelled(command)
+
+    def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
+        # Validate endpoint exists
+        endpoint = self.session.query(Endpoint).filter(Endpoint.id == endpoint_id).first()
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Endpoint not found."
+            )
+        return self.repository.list_by_endpoint(endpoint_id, skip=skip, limit=limit)

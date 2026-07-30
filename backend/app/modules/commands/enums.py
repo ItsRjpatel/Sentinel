@@ -1,0 +1,18 @@
+from enum import Enum
+
+class CommandStatus(str, Enum):
+    PENDING = "PENDING"
+    SENT = "SENT"
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+
+class CommandType(str, Enum):
+    PING = "PING"
+    RUN_INVENTORY = "RUN_INVENTORY"
+    REFRESH_POLICY = "REFRESH_POLICY"
+    RESTART_SERVICE = "RESTART_SERVICE"
+    RESTART_AGENT = "RESTART_AGENT"
+    SYNC_NOW = "SYNC_NOW"

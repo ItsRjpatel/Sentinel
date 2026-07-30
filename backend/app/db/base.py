@@ -9,3 +9,4 @@ class Base(DeclarativeBase):
 from app.modules.auth.models import *  # noqa
 from app.modules.endpoints.models import *  # noqa
 from app.modules.inventory.models import *  # noqa
+from app.modules.commands.models import *  # noqa
