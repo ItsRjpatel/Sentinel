@@ -3,25 +3,28 @@ from uuid import UUID
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.commands.repository import CommandRepository
 from app.modules.commands.models import Command
 from app.modules.commands.schemas import CommandCreate, CommandStatusUpdate
-from app.modules.commands.enums import CommandStatus
+from app.modules.commands.enums import CommandStatus, CommandType
 from app.modules.endpoints.models import Endpoint
 
 class CommandService:
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
         self.repository = CommandRepository(session)
 
     def _get_utc_now(self):
         return datetime.now(timezone.utc)
 
-    def queue_command(self, cmd_in: CommandCreate) -> Command:
+    async def queue_command(self, cmd_in: CommandCreate) -> Command:
         # 1. Validate endpoint exists
-        endpoint = self.session.query(Endpoint).filter(Endpoint.id == cmd_in.endpoint_id).first()
+        stmt = select(Endpoint).where(Endpoint.id == cmd_in.endpoint_id)
+        res = await self.session.execute(stmt)
+        endpoint = res.scalar_one_or_none()
         if not endpoint:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -29,10 +32,10 @@ class CommandService:
             )
 
         # 2. Prevent duplicate pending inventory commands
-        if cmd_in.command_type == "RUN_INVENTORY":
-            pending_commands = self.repository.get_pending_for_endpoint(
+        if cmd_in.command_type == CommandType.RUN_INVENTORY:
+            pending_commands = await self.repository.get_pending_for_endpoint(
                 endpoint_id=cmd_in.endpoint_id, 
-                command_type="RUN_INVENTORY"
+                command_type=CommandType.RUN_INVENTORY.value
             )
             if pending_commands:
                 raise HTTPException(
@@ -51,13 +54,13 @@ class CommandService:
             payload=cmd_in.payload,
             created_by=cmd_in.created_by,
             expires_at=expires_at,
-            status=CommandStatus.PENDING
+            status=CommandStatus.PENDING.value
         )
 
-        return self.repository.create(command)
+        return await self.repository.create(command)
 
-    def get_command(self, command_id: UUID) -> Command:
-        command = self.repository.get_by_id(command_id)
+    async def get_command(self, command_id: UUID) -> Command:
+        command = await self.repository.get_by_id(command_id)
         if not command:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -65,21 +68,23 @@ class CommandService:
             )
         return command
 
-    def cancel_command(self, command_id: UUID) -> Command:
-        command = self.get_command(command_id)
-        if command.status != CommandStatus.PENDING:
+    async def cancel_command(self, command_id: UUID) -> Command:
+        command = await self.get_command(command_id)
+        if command.status != CommandStatus.PENDING.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot cancel command in status {command.status}."
             )
-        return self.repository.mark_cancelled(command)
+        return await self.repository.mark_cancelled(command)
 
-    def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
+    async def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
         # Validate endpoint exists
-        endpoint = self.session.query(Endpoint).filter(Endpoint.id == endpoint_id).first()
+        stmt = select(Endpoint).where(Endpoint.id == endpoint_id)
+        res = await self.session.execute(stmt)
+        endpoint = res.scalar_one_or_none()
         if not endpoint:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Endpoint not found."
             )
-        return self.repository.list_by_endpoint(endpoint_id, skip=skip, limit=limit)
+        return await self.repository.list_by_endpoint(endpoint_id, skip=skip, limit=limit)
