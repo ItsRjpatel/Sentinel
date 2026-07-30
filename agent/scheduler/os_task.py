@@ -1,22 +1,16 @@
 import logging
 from agent.scheduler.scheduler import ScheduledTask
-from agent.collectors.hardware.collector import HardwareCollector
+from agent.collectors.operating_system.collector import OperatingSystemCollector
 from agent.communication.client import AgentHTTPClient
 from agent.communication.enrollment import EnrollmentManager
 
 logger = logging.getLogger(__name__)
 
 
-class HardwareInventoryTask(ScheduledTask):
-    """Periodically queries hardware specifications and uploads validated models to the Sentinel backend."""
+class OperatingSystemInventoryTask(ScheduledTask):
+    """Periodically queries local operating system details and uploads validated models to the Sentinel backend."""
 
-    def __init__(
-        self,
-        interval_seconds: int,
-        client: AgentHTTPClient,
-        enrollment_manager: EnrollmentManager,
-        collector: HardwareCollector
-    ) -> None:
+    def __init__(self, interval_seconds: int, client: AgentHTTPClient, enrollment_manager: EnrollmentManager, collector: OperatingSystemCollector) -> None:
         super().__init__(interval_seconds)
         self.client = client
         self.enrollment_manager = enrollment_manager
@@ -27,7 +21,7 @@ class HardwareInventoryTask(ScheduledTask):
             logger.warning("Agent check-in skipped. Registration credentials missing.")
             return
 
-        logger.info("Initiating system hardware inventory query collection...")
+        logger.info("Initiating operating system details collection...")
         import asyncio
         def run_collector():
             import os
@@ -42,19 +36,19 @@ class HardwareInventoryTask(ScheduledTask):
                     pythoncom.CoUninitialize()
 
         try:
-            # Query Windows APIs (returns validated Pydantic DTO only)
-            hardware_dto = await asyncio.to_thread(run_collector)
+            # Query Windows APIs
+            os_dto = await asyncio.to_thread(run_collector)
 
             # Upload details via communication layer client
             resp = await self.client.request(
                 method="POST",
-                path="inventory/hardware",
-                json_data=hardware_dto.model_dump()
+                path="inventory/os",
+                json_data=os_dto.model_dump()
             )
 
             if resp.status_code == 200:
-                logger.info("Hardware inventory details successfully reported to Sentinel backend.")
+                logger.info("Operating system inventory details successfully reported to Sentinel backend.")
             else:
-                logger.error(f"Hardware inventory upload rejected by server. Status code: {resp.status_code}")
+                logger.error(f"Operating system inventory upload rejected by server. Status code: {resp.status_code}")
         except Exception as e:
-            logger.exception(f"Unexpected exception during hardware inventory upload loop: {e}")
+            logger.exception(f"Unexpected exception during operating system inventory upload loop: {e}")

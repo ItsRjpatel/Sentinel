@@ -16,7 +16,19 @@ from agent.communication.enrollment import EnrollmentManager
 from agent.scheduler.scheduler import Scheduler
 from agent.scheduler.heartbeat import HeartbeatTask
 from agent.collectors.hardware.collector import HardwareCollector
+from agent.collectors.operating_system.collector import OperatingSystemCollector
+from agent.collectors.network.collector import NetworkCollector
+from agent.collectors.storage.collector import StorageCollector
+from agent.collectors.software.collector import SoftwareCollector
 from agent.scheduler.hardware_task import HardwareInventoryTask
+from agent.scheduler.os_task import OperatingSystemInventoryTask
+from agent.scheduler.network_task import NetworkInventoryTask
+from agent.scheduler.storage_task import DiskInventoryTask
+from agent.scheduler.software_task import SoftwareInventoryTask
+from agent.collectors.windows_updates.collector import WindowsUpdateCollector
+from agent.scheduler.windows_update_task import WindowsUpdateInventoryTask
+from agent.collectors.services.collector import WindowsServiceCollector
+from agent.scheduler.services_task import WindowsServiceInventoryTask
 
 logger = logging.getLogger("agent.main")
 
@@ -83,13 +95,73 @@ async def async_service_start() -> None:
         collector=collector
     )
 
+    os_collector = OperatingSystemCollector()
+    container.os_inventory_task = OperatingSystemInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=os_collector
+    )
+
+    net_collector = NetworkCollector()
+    container.net_inventory_task = NetworkInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=net_collector
+    )
+
+    storage_collector = StorageCollector()
+    container.storage_inventory_task = DiskInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=storage_collector
+    )
+
+    software_collector = SoftwareCollector()
+    container.software_inventory_task = SoftwareInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=software_collector
+    )
+
+    wu_collector = WindowsUpdateCollector()
+    container.windows_update_task = WindowsUpdateInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=wu_collector
+    )
+
+    ws_collector = WindowsServiceCollector()
+    container.windows_service_task = WindowsServiceInventoryTask(
+        interval_seconds=86400,
+        client=container.http_client,
+        enrollment_manager=container.enrollment_service,
+        collector=ws_collector
+    )
+
     container.scheduler = Scheduler()
     container.scheduler.register_task(container.heartbeat_service)
     container.scheduler.register_task(container.hardware_inventory_task)
+    container.scheduler.register_task(container.os_inventory_task)
+    container.scheduler.register_task(container.net_inventory_task)
+    container.scheduler.register_task(container.storage_inventory_task)
+    container.scheduler.register_task(container.software_inventory_task)
+    container.scheduler.register_task(container.windows_update_task)
+    container.scheduler.register_task(container.windows_service_task)
 
     # 8. Start Async Scheduler execution loop and run initial collection immediately
     await container.scheduler.start()
     asyncio.create_task(container.hardware_inventory_task.execute())
+    asyncio.create_task(container.os_inventory_task.execute())
+    asyncio.create_task(container.net_inventory_task.execute())
+    asyncio.create_task(container.storage_inventory_task.execute())
+    asyncio.create_task(container.software_inventory_task.execute())
+    asyncio.create_task(container.windows_update_task.execute())
+    asyncio.create_task(container.windows_service_task.execute())
     logger.info("Sentinel Agent successfully started.")
 
     # Block thread until stop signal is sent

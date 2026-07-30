@@ -1,21 +1,21 @@
 import logging
 from agent.scheduler.scheduler import ScheduledTask
-from agent.collectors.hardware.collector import HardwareCollector
+from agent.collectors.services.collector import WindowsServiceCollector
 from agent.communication.client import AgentHTTPClient
 from agent.communication.enrollment import EnrollmentManager
 
 logger = logging.getLogger(__name__)
 
 
-class HardwareInventoryTask(ScheduledTask):
-    """Periodically queries hardware specifications and uploads validated models to the Sentinel backend."""
+class WindowsServiceInventoryTask(ScheduledTask):
+    """Periodically queries local WMI for installed Windows Services and posts validated DTOs to Sentinel backend."""
 
     def __init__(
         self,
         interval_seconds: int,
         client: AgentHTTPClient,
         enrollment_manager: EnrollmentManager,
-        collector: HardwareCollector
+        collector: WindowsServiceCollector
     ) -> None:
         super().__init__(interval_seconds)
         self.client = client
@@ -27,7 +27,7 @@ class HardwareInventoryTask(ScheduledTask):
             logger.warning("Agent check-in skipped. Registration credentials missing.")
             return
 
-        logger.info("Initiating system hardware inventory query collection...")
+        logger.info("Initiating Windows Service inventory query loop...")
         import asyncio
         def run_collector():
             import os
@@ -42,19 +42,19 @@ class HardwareInventoryTask(ScheduledTask):
                     pythoncom.CoUninitialize()
 
         try:
-            # Query Windows APIs (returns validated Pydantic DTO only)
-            hardware_dto = await asyncio.to_thread(run_collector)
+            # Discover installed Windows Services
+            service_dtos = await asyncio.to_thread(run_collector)
 
-            # Upload details via communication layer client
+            # Dispatch payload via HTTP transport client
             resp = await self.client.request(
                 method="POST",
-                path="inventory/hardware",
-                json_data=hardware_dto.model_dump()
+                path="inventory/services",
+                json_data=[item.model_dump() for item in service_dtos]
             )
 
             if resp.status_code == 200:
-                logger.info("Hardware inventory details successfully reported to Sentinel backend.")
+                logger.info(f"Windows Service inventory successfully reported to Sentinel backend. Total entries: {len(service_dtos)}")
             else:
-                logger.error(f"Hardware inventory upload rejected by server. Status code: {resp.status_code}")
+                logger.error(f"Windows Service inventory upload rejected by server. Status code: {resp.status_code}")
         except Exception as e:
-            logger.exception(f"Unexpected exception during hardware inventory upload loop: {e}")
+            logger.exception(f"Unexpected exception during Windows Service inventory upload loop: {e}")
