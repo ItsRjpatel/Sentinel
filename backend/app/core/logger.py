@@ -42,6 +42,10 @@ def setup_logging() -> None:
                 record.request_id = "N/A"
             return True
 
+    req_id_filter = RequestIdFilter()
+    console_handler.addFilter(req_id_filter)
+    file_handler.addFilter(req_id_filter)
+
     # Apply configuration to root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
@@ -52,7 +56,6 @@ def setup_logging() -> None:
 
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
-    root_logger.addFilter(RequestIdFilter())
 
     # Configure uvicorn loggers to use the same format
     for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):

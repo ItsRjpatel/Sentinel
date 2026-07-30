@@ -11,6 +11,7 @@ from app.modules.commands.models import Command
 from app.modules.commands.schemas import CommandCreate, CommandStatusUpdate
 from app.modules.commands.enums import CommandStatus, CommandType
 from app.modules.endpoints.models import Endpoint
+from app.core.events.dispatcher import event_dispatcher
 
 class CommandService:
     def __init__(self, session: AsyncSession):
@@ -57,7 +58,18 @@ class CommandService:
             status=CommandStatus.PENDING.value
         )
 
-        return await self.repository.create(command)
+        created_cmd = await self.repository.create(command)
+        
+        event_dispatcher.publish("COMMAND_QUEUED", {
+            "id": str(created_cmd.id),
+            "endpoint_id": str(created_cmd.endpoint_id),
+            "command_type": created_cmd.command_type,
+            "status": created_cmd.status,
+            "payload": created_cmd.payload,
+            "created_by": created_cmd.created_by
+        })
+        
+        return created_cmd
 
     async def get_command(self, command_id: UUID) -> Command:
         command = await self.repository.get_by_id(command_id)
@@ -97,7 +109,18 @@ class CommandService:
             await self.repository.mark_timeout(command)
             return None
 
-        return await self.repository.mark_sent(command)
+        sent_cmd = await self.repository.mark_sent(command)
+        
+        event_dispatcher.publish("COMMAND_SENT", {
+            "id": str(sent_cmd.id),
+            "endpoint_id": str(sent_cmd.endpoint_id),
+            "command_type": sent_cmd.command_type,
+            "status": sent_cmd.status,
+            "payload": sent_cmd.payload,
+            "created_by": sent_cmd.created_by
+        })
+        
+        return sent_cmd
 
     async def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
         # Validate endpoint exists
@@ -118,9 +141,20 @@ class CommandService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot update result for command in status {command.status}."
             )
-        return await self.repository.update_result(
+        updated_cmd = await self.repository.update_result(
             command=command,
             success=success,
             result=result,
             error_message=error_message
         )
+        
+        event_dispatcher.publish(f"COMMAND_{updated_cmd.status}", {
+            "id": str(updated_cmd.id),
+            "endpoint_id": str(updated_cmd.endpoint_id),
+            "command_type": updated_cmd.command_type,
+            "status": updated_cmd.status,
+            "result": updated_cmd.result,
+            "error_message": updated_cmd.error_message
+        })
+        
+        return updated_cmd

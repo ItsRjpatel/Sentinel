@@ -34,6 +34,9 @@ def create_app() -> FastAPI:
     app.include_router(inventory_router, prefix=settings.API_PREFIX)
     app.include_router(commands_router, prefix=settings.API_PREFIX)
     app.include_router(commands_endpoint_router, prefix=settings.API_PREFIX)
+    
+    from app.modules.commands.websocket import router as ws_commands_router
+    app.include_router(ws_commands_router)
 
     return app
 

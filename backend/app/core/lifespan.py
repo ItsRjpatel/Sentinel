@@ -21,7 +21,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing Sentinel Backend...")
     logger.info("Connecting to database...")
 
+    from app.core.websocket.bridge import setup_websocket_bridge
+    from app.core.websocket.manager import connection_manager
+    import asyncio
+    
+    setup_websocket_bridge()
+    cleanup_task = asyncio.create_task(connection_manager.cleanup_dead_connections())
+
     yield
+    
+    cleanup_task.cancel()
 
     # --- Shutdown ---
     logger.info("Shutting down Sentinel Backend...")
