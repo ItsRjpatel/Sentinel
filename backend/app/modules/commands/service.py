@@ -77,6 +77,28 @@ class CommandService:
             )
         return await self.repository.mark_cancelled(command)
 
+    async def poll_command(self, endpoint_id: UUID) -> Optional[Command]:
+        # Validate endpoint exists
+        stmt = select(Endpoint).where(Endpoint.id == endpoint_id)
+        res = await self.session.execute(stmt)
+        endpoint = res.scalar_one_or_none()
+        if not endpoint:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Endpoint not found."
+            )
+
+        command = await self.repository.get_oldest_pending_for_endpoint_and_lock(endpoint_id)
+        if not command:
+            return None
+
+        # Expire old commands instead of sending them
+        if command.expires_at and self._get_utc_now() > command.expires_at:
+            await self.repository.mark_timeout(command)
+            return None
+
+        return await self.repository.mark_sent(command)
+
     async def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
         # Validate endpoint exists
         stmt = select(Endpoint).where(Endpoint.id == endpoint_id)
@@ -88,3 +110,17 @@ class CommandService:
                 detail="Endpoint not found."
             )
         return await self.repository.list_by_endpoint(endpoint_id, skip=skip, limit=limit)
+
+    async def update_command_result(self, command_id: UUID, success: bool, result: Optional[dict] = None, error_message: Optional[str] = None) -> Command:
+        command = await self.get_command(command_id)
+        if command.status not in [CommandStatus.SENT.value, CommandStatus.RUNNING.value]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot update result for command in status {command.status}."
+            )
+        return await self.repository.update_result(
+            command=command,
+            success=success,
+            result=result,
+            error_message=error_message
+        )

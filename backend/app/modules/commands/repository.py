@@ -36,6 +36,14 @@ class CommandRepository:
         res = await self.session.execute(stmt)
         return list(res.scalars().all())
 
+    async def get_oldest_pending_for_endpoint_and_lock(self, endpoint_id: UUID) -> Optional[Command]:
+        stmt = select(Command).where(
+            Command.endpoint_id == endpoint_id,
+            Command.status == CommandStatus.PENDING.value
+        ).order_by(Command.created_at.asc()).with_for_update(skip_locked=True).limit(1)
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none()
+
     async def mark_sent(self, command: Command) -> Command:
         command.status = CommandStatus.SENT.value
         await self.session.commit()
@@ -54,6 +62,19 @@ class CommandRepository:
         command.completed_at = get_utc_now()
         if result:
             command.result = result
+        await self.session.commit()
+        await self.session.refresh(command)
+        return command
+
+    async def update_result(self, command: Command, success: bool, result: dict = None, error_message: str = None) -> Command:
+        command.status = CommandStatus.SUCCESS.value if success else CommandStatus.FAILED.value
+        command.completed_at = get_utc_now()
+        if not command.started_at:
+            command.started_at = command.completed_at # fallback if not marked running
+        if result is not None:
+            command.result = result
+        if error_message is not None:
+            command.error_message = error_message
         await self.session.commit()
         await self.session.refresh(command)
         return command

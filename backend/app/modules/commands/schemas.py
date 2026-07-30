@@ -28,6 +28,18 @@ class CommandResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PaginatedCommandResponse(BaseModel):
+    items: List[CommandResponse]
+    total: int
+    page: int
+    size: int
+
+class CommandResultRequest(BaseModel):
+    success: bool
+    duration_ms: Optional[int] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
 class CommandResult(BaseModel):
     status: CommandStatus
     result: Optional[Dict[str, Any]] = None

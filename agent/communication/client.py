@@ -207,3 +207,35 @@ class AgentHTTPClient:
                     extra={"request_id": req_id, "correlation_id": corr_id}
                 )
                 await asyncio.sleep(sleep_duration)
+
+    async def poll_command(self) -> typing.Optional[dict]:
+        """Polls the backend for pending commands."""
+        response = await self.request(
+            method="GET",
+            path="commands/poll"
+        )
+        if response.status_code == 204:
+            return None
+        response.raise_for_status()
+        return response.json()
+
+    async def upload_command_result(self, command_id: str, success: bool, duration_ms: Optional[int], result: Optional[dict], error: Optional[str]) -> bool:
+        """Uploads the command execution result to the backend."""
+        logger.info(f"Upload started for command {command_id}")
+        try:
+            response = await self.request(
+                method="POST",
+                path=f"commands/{command_id}/result",
+                json_data={
+                    "success": success,
+                    "duration_ms": duration_ms,
+                    "result": result,
+                    "error": error
+                }
+            )
+            response.raise_for_status()
+            logger.info(f"Upload successful for command {command_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Upload failed for command {command_id}: {e}")
+            return False

@@ -29,6 +29,7 @@ from agent.collectors.windows_updates.collector import WindowsUpdateCollector
 from agent.scheduler.windows_update_task import WindowsUpdateInventoryTask
 from agent.collectors.services.collector import WindowsServiceCollector
 from agent.scheduler.services_task import WindowsServiceInventoryTask
+from agent.scheduler.command_polling_task import CommandPollingTask
 
 logger = logging.getLogger("agent.main")
 
@@ -143,8 +144,14 @@ async def async_service_start() -> None:
         collector=ws_collector
     )
 
+    container.command_polling_task = CommandPollingTask(
+        backend_client=container.http_client,
+        interval_seconds=10
+    )
+
     container.scheduler = Scheduler()
     container.scheduler.register_task(container.heartbeat_service)
+    container.scheduler.register_task(container.command_polling_task)
     container.scheduler.register_task(container.hardware_inventory_task)
     container.scheduler.register_task(container.os_inventory_task)
     container.scheduler.register_task(container.net_inventory_task)
