@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
 
@@ -8,10 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.commands.repository import CommandRepository
 from app.modules.commands.models import Command
-from app.modules.commands.schemas import CommandCreate, CommandStatusUpdate
+from app.modules.commands.schemas import CommandCreate, BulkCommandCreate, BulkCommandResponse
 from app.modules.commands.enums import CommandStatus, CommandType
 from app.modules.endpoints.models import Endpoint
 from app.core.events.dispatcher import event_dispatcher
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CommandService:
     def __init__(self, session: AsyncSession):
@@ -55,10 +59,14 @@ class CommandService:
             payload=cmd_in.payload,
             created_by=cmd_in.created_by,
             expires_at=expires_at,
+            scheduled_at=cmd_in.scheduled_at,
+            recurring=cmd_in.recurring,
+            timezone=cmd_in.timezone,
             status=CommandStatus.PENDING.value
         )
 
         created_cmd = await self.repository.create(command)
+        logger.info(f"[COMMAND LIFECYCLE: QUEUED] Command {created_cmd.id} queued for Endpoint {created_cmd.endpoint_id} ({created_cmd.command_type})")
         
         event_dispatcher.publish("COMMAND_QUEUED", {
             "id": str(created_cmd.id),
@@ -71,6 +79,68 @@ class CommandService:
         
         return created_cmd
 
+    async def queue_bulk_commands(self, bulk_in: BulkCommandCreate, created_by: str) -> BulkCommandResponse:
+        if not bulk_in.endpoint_ids:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one endpoint must be specified.")
+
+        created_commands = []
+        expires_at = None
+        if bulk_in.expires_in_seconds:
+            expires_at = self._get_utc_now() + timedelta(seconds=bulk_in.expires_in_seconds)
+
+        for ep_id in bulk_in.endpoint_ids:
+            cmd = Command(
+                endpoint_id=ep_id,
+                command_type=bulk_in.command_type.value,
+                payload=bulk_in.payload,
+                created_by=created_by,
+                expires_at=expires_at,
+                scheduled_at=bulk_in.scheduled_at,
+                timezone=bulk_in.timezone,
+                status=CommandStatus.PENDING.value
+            )
+            created_commands.append(cmd)
+
+        saved_commands = await self.repository.create_bulk(created_commands)
+
+        for c in saved_commands:
+            logger.info(f"[COMMAND LIFECYCLE: BULK QUEUED] Command {c.id} queued for Endpoint {c.endpoint_id} ({c.command_type})")
+            event_dispatcher.publish("COMMAND_QUEUED", {
+                "id": str(c.id),
+                "endpoint_id": str(c.endpoint_id),
+                "command_type": c.command_type,
+                "status": c.status,
+                "payload": c.payload,
+                "created_by": c.created_by
+            })
+
+        return BulkCommandResponse(
+            queued_count=len(saved_commands),
+            command_ids=[c.id for c in saved_commands]
+        )
+
+    async def retry_command(self, command_id: UUID, created_by: str) -> Command:
+        original = await self.get_command(command_id)
+        if original.status.upper() not in [CommandStatus.FAILED.value, CommandStatus.TIMEOUT.value]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Can only retry commands in FAILED or TIMEOUT status, not {original.status}."
+            )
+
+        new_cmd_in = CommandCreate(
+            endpoint_id=original.endpoint_id,
+            command_type=CommandType(original.command_type),
+            payload=original.payload,
+            created_by=created_by,
+            expires_in_seconds=3600
+        )
+        new_cmd = await self.queue_command(new_cmd_in)
+        new_cmd.retry_count = original.retry_count + 1
+        await self.session.commit()
+        await self.session.refresh(new_cmd)
+        logger.info(f"[COMMAND LIFECYCLE: RETRIED] Retried Command {original.id} -> New Command {new_cmd.id}")
+        return new_cmd
+
     async def get_command(self, command_id: UUID) -> Command:
         command = await self.repository.get_by_id(command_id)
         if not command:
@@ -82,15 +152,23 @@ class CommandService:
 
     async def cancel_command(self, command_id: UUID) -> Command:
         command = await self.get_command(command_id)
-        if command.status != CommandStatus.PENDING.value:
+        if command.status.upper() != CommandStatus.PENDING.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot cancel command in status {command.status}."
             )
-        return await self.repository.mark_cancelled(command)
+        cancelled = await self.repository.mark_cancelled(command)
+        logger.info(f"[COMMAND LIFECYCLE: CANCELLED] Command {cancelled.id} marked CANCELLED")
+        
+        event_dispatcher.publish("COMMAND_CANCELLED", {
+            "id": str(cancelled.id),
+            "endpoint_id": str(cancelled.endpoint_id),
+            "command_type": cancelled.command_type,
+            "status": cancelled.status
+        })
+        return cancelled
 
     async def poll_command(self, endpoint_id: UUID) -> Optional[Command]:
-        # Validate endpoint exists
         stmt = select(Endpoint).where(Endpoint.id == endpoint_id)
         res = await self.session.execute(stmt)
         endpoint = res.scalar_one_or_none()
@@ -104,12 +182,19 @@ class CommandService:
         if not command:
             return None
 
-        # Expire old commands instead of sending them
         if command.expires_at and self._get_utc_now() > command.expires_at:
-            await self.repository.mark_timeout(command)
+            timed_out = await self.repository.mark_timeout(command)
+            logger.warning(f"[COMMAND LIFECYCLE: TIMEOUT] Command {timed_out.id} expired prior to poll")
+            event_dispatcher.publish("COMMAND_TIMEOUT", {
+                "id": str(timed_out.id),
+                "endpoint_id": str(timed_out.endpoint_id),
+                "command_type": timed_out.command_type,
+                "status": timed_out.status
+            })
             return None
 
         sent_cmd = await self.repository.mark_sent(command)
+        logger.info(f"[COMMAND LIFECYCLE: SENT] Command {sent_cmd.id} ({sent_cmd.command_type}) sent to Endpoint {endpoint_id}")
         
         event_dispatcher.publish("COMMAND_SENT", {
             "id": str(sent_cmd.id),
@@ -123,7 +208,6 @@ class CommandService:
         return sent_cmd
 
     async def get_endpoint_commands(self, endpoint_id: UUID, skip: int = 0, limit: int = 100) -> List[Command]:
-        # Validate endpoint exists
         stmt = select(Endpoint).where(Endpoint.id == endpoint_id)
         res = await self.session.execute(stmt)
         endpoint = res.scalar_one_or_none()
@@ -134,9 +218,32 @@ class CommandService:
             )
         return await self.repository.list_by_endpoint(endpoint_id, skip=skip, limit=limit)
 
+    async def list_commands_paginated(
+        self,
+        status_filter: Optional[str] = None,
+        command_type: Optional[str] = None,
+        endpoint_id: Optional[UUID] = None,
+        search: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20
+    ) -> Tuple[List[Command], int]:
+        skip = (page - 1) * page_size
+        return await self.repository.list_commands_paginated(
+            status_filter=status_filter,
+            command_type=command_type,
+            endpoint_id=endpoint_id,
+            search=search,
+            skip=skip,
+            limit=page_size
+        )
+
+    async def get_summary_counts(self) -> dict:
+        return await self.repository.get_summary_counts()
+
     async def update_command_result(self, command_id: UUID, success: bool, result: Optional[dict] = None, error_message: Optional[str] = None) -> Command:
         command = await self.get_command(command_id)
-        if command.status not in [CommandStatus.SENT.value, CommandStatus.RUNNING.value]:
+        valid_statuses = [CommandStatus.SENT.value, CommandStatus.RUNNING.value, "sent", "running"]
+        if command.status.upper() not in [s.upper() for s in valid_statuses]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot update result for command in status {command.status}."
@@ -147,6 +254,7 @@ class CommandService:
             result=result,
             error_message=error_message
         )
+        logger.info(f"[COMMAND LIFECYCLE: {updated_cmd.status}] Command {command_id} result uploaded: Success={success}")
         
         event_dispatcher.publish(f"COMMAND_{updated_cmd.status}", {
             "id": str(updated_cmd.id),

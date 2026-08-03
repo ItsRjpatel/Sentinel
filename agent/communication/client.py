@@ -20,7 +20,7 @@ class AgentHTTPClient:
         max_retries: int = 3,
         verify_tls: bool = True
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip("/") + "/"
         self.storage = storage
         self.timeout = httpx.Timeout(timeout_seconds)
         self.max_retries = max_retries
@@ -60,7 +60,7 @@ class AgentHTTPClient:
 
             req = self.client.build_request(
                 method="POST",
-                url="/auth/refresh",
+                url="auth/refresh",
                 json={"refresh_token": refresh_token},
                 headers=req_headers
             )
@@ -107,7 +107,7 @@ class AgentHTTPClient:
         auth_token: Optional[str] = None
     ) -> httpx.Response:
         """Sends HTTP request with full trace logs, correlation IDs, and automated JWT token management."""
-        url_path = f"/{path.lstrip('/')}"
+        url_path = path.lstrip("/")
         
         req_headers = self.default_headers.copy()
         if headers:

@@ -152,27 +152,6 @@ async def get_my_hardware(
     )
 
 
-@router.get("/inventory/{endpoint_id}", response_model=SuccessResponse[HardwareInventoryResponse])
-async def get_endpoint_hardware(
-    endpoint_id: uuid.UUID,
-    token: str = Depends(oauth2_scheme),
-    service: HardwareInventoryService = Depends(get_inventory_service)
-):
-    """Queries details of custom hardware metrics via target Endpoint UUID identifiers."""
-    # Authenticate token exists
-    try:
-        verify_access_token(token)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
-
-    record = await service.get_hardware_inventory(endpoint_id)
-    if not record:
-        raise HTTPException(status_code=404, detail="No inventory record matched for target ID.")
-    return SuccessResponse(
-        message="Hardware inventory retrieved",
-        data=HardwareInventoryResponse.model_validate(record)
-    )
-
 
 @router.post("/inventory/os", response_model=SuccessResponse[OperatingSystemInventoryResponse])
 async def upload_os(
@@ -478,6 +457,28 @@ async def get_endpoint_windows_services(
     return SuccessResponse(
         message="Windows Service inventory retrieved",
         data=[WindowsServiceInventoryResponse.model_validate(r) for r in records]
+    )
+
+
+@router.get("/inventory/{endpoint_id}", response_model=SuccessResponse[HardwareInventoryResponse])
+@router.get("/inventory/hardware/{endpoint_id}", response_model=SuccessResponse[HardwareInventoryResponse])
+async def get_endpoint_hardware(
+    endpoint_id: uuid.UUID,
+    token: str = Depends(oauth2_scheme),
+    service: HardwareInventoryService = Depends(get_inventory_service)
+):
+    """Queries details of custom hardware metrics via target Endpoint UUID identifiers."""
+    try:
+        verify_access_token(token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    record = await service.get_hardware_inventory(endpoint_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="No inventory record matched for target ID.")
+    return SuccessResponse(
+        message="Hardware inventory retrieved",
+        data=HardwareInventoryResponse.model_validate(record)
     )
 
 

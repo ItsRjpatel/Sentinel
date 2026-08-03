@@ -48,10 +48,10 @@ def handle_get_service_list(command: dict) -> dict:
                     info = {"name": svc.name(), "display_name": svc.display_name()}
                     
                 services.append({
-                    "name": info.get("name"),
-                    "display_name": info.get("display_name"),
-                    "status": info.get("status", "unknown"),
-                    "start_type": info.get("start_type", "unknown")
+                    "name": str(info.get("name") or "Unknown"),
+                    "display_name": str(info.get("display_name") or "Unknown"),
+                    "status": str(info.get("status", "unknown")),
+                    "start_type": str(info.get("start_type", "unknown"))
                 })
             except Exception:
                 pass

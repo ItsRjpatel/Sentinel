@@ -14,10 +14,10 @@ def execute(command: dict) -> dict:
                 mem_mb = info['memory_info'].rss / (1024 * 1024) if info.get('memory_info') else 0
                 
                 processes.append({
-                    "pid": info.get("pid"),
-                    "name": info.get("name"),
-                    "cpu": info.get("cpu_percent", 0.0),
-                    "memory_mb": round(mem_mb, 2)
+                    "pid": int(info.get("pid") or 0),
+                    "name": str(info.get("name") or "Unknown"),
+                    "cpu": float(info.get("cpu_percent", 0.0) or 0.0),
+                    "memory_mb": float(round(mem_mb, 2))
                 })
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass

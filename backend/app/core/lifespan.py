@@ -23,8 +23,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     from app.core.websocket.bridge import setup_websocket_bridge
     from app.core.websocket.manager import connection_manager
+    from app.db.base import Base
+    from app.core.seed import seed_development_data
     import asyncio
     
+    # Ensure database schema tables exist
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Seed development data if DB is empty
+    await seed_development_data()
+
     setup_websocket_bridge()
     cleanup_task = asyncio.create_task(connection_manager.cleanup_dead_connections())
 

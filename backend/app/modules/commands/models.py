@@ -28,6 +28,9 @@ class Command(Base):
     error_message = Column(String, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)
     expires_at = Column(DateTime(timezone=True), nullable=True)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    recurring = Column(String, nullable=True)
+    timezone = Column(String, nullable=True)
 
     endpoint = relationship("Endpoint", backref="commands")
 

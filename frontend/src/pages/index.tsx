@@ -1,0 +1,15 @@
+export { DashboardPage } from "../features/dashboard/pages/DashboardPage";
+export { EndpointsPage } from "../features/endpoints/pages/EndpointsPage";
+export { CommandsPage } from "../features/commands/pages/CommandsPage";
+export { AlertsPage } from "../features/alerts/pages/AlertsPage";
+export { AuditPage, AuditPage as AuditLogsPage } from "../features/audit/pages/AuditPage";
+export { UsersPage } from "../features/users/pages/UsersPage";
+export { RolesPage } from "../features/rbac/pages/RolesPage";
+export { PermissionsPage } from "../features/rbac/pages/PermissionsPage";
+export { SettingsPage } from "../features/settings/pages/SettingsPage";
+export { DocsPage } from "../features/docs/pages/DocsPage";
+export { ReportsPage } from "../features/reports/pages/ReportsPage";
+export { NotificationsPage } from "../features/notifications/pages/NotificationsPage";
+export { OrganizationPage } from "../features/organization/pages/OrganizationPage";
+export { PoliciesPage } from "../features/policies/pages/PoliciesPage";
+export { SoftwarePage } from "../features/software/pages/SoftwarePage";

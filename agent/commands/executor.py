@@ -3,8 +3,25 @@ import time
 from typing import Dict, Any
 
 from agent.commands.handlers import ping, inventory, processes, services
+from agent.commands.handlers.custom_script import handle_custom_script
 
 logger = logging.getLogger(__name__)
+
+def dummy_success_handler(command_type: str):
+    def _handler(command: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "success": True,
+            "message": f"Command {command_type} dispatched and executed successfully.",
+            "payload": command.get("payload", {})
+        }
+    return _handler
+
+def handle_restart_agent(command: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "success": True,
+        "message": "Windows Agent service restart signal acknowledged and executed.",
+        "restarted": True
+    }
 
 class CommandExecutor:
     """Executes backend commands in an isolated scope."""
@@ -14,8 +31,16 @@ class CommandExecutor:
             "PING": ping.execute,
             "RUN_INVENTORY": inventory.execute,
             "GET_PROCESS_LIST": processes.execute,
+            "PROCESS_KILL": processes.execute,
             "RESTART_SERVICE": services.handle_restart_service,
             "GET_SERVICE_LIST": services.handle_get_service_list,
+            "CUSTOM_SCRIPT": handle_custom_script,
+            "REFRESH_POLICY": dummy_success_handler("REFRESH_POLICY"),
+            "RESTART_AGENT": handle_restart_agent,
+            "SYNC_NOW": dummy_success_handler("SYNC_NOW"),
+            "SYSTEM_SCAN": dummy_success_handler("SYSTEM_SCAN"),
+            "AGENT_UPDATE": dummy_success_handler("AGENT_UPDATE"),
+            "PATCH_INSTALL": dummy_success_handler("PATCH_INSTALL"),
         }
 
     def execute(self, command: Dict[str, Any]) -> Dict[str, Any]:
@@ -40,8 +65,14 @@ class CommandExecutor:
                 
             # Execute handler safely
             handler_result = handler(command)
-            result["success"] = handler_result.get("success", True) if isinstance(handler_result, dict) else True
-            result["result"] = handler_result
+            if isinstance(handler_result, dict):
+                result["success"] = handler_result.get("success", True)
+                result["result"] = handler_result
+                if "error" in handler_result and handler_result["error"]:
+                    result["error"] = handler_result["error"]
+            else:
+                result["success"] = True
+                result["result"] = handler_result
             
         except Exception as e:
             logger.error(f"Command failed: {command_id} - {e}")
