@@ -1,8 +1,11 @@
 import json
+import logging
 import os
 import platform
+import shutil
 import socket
 import subprocess
+import sys
 import tkinter as tk
 import urllib.parse
 import urllib.request
@@ -243,8 +246,9 @@ class SentinelEnrollmentWizard:
     def run_connectivity_test(self):
         """Tests REST API health and socket reachability to target server URL."""
         import logging
+
         logger = logging.getLogger("agent.wizard")
-        
+
         raw_url = self.server_url_var.get().strip().rstrip("/")
         if not raw_url:
             messagebox.showwarning(
@@ -263,7 +267,7 @@ class SentinelEnrollmentWizard:
 
         candidate_urls = [
             f"{clean_base}/api/v1/health",
-            f"{clean_base}/api/v1/agent/version"
+            f"{clean_base}/api/v1/agent/version",
         ]
 
         last_error = None
@@ -278,8 +282,12 @@ class SentinelEnrollmentWizard:
                 with urllib.request.urlopen(req, timeout=5) as response:
                     status_code = response.status
                     body = response.read().decode("utf-8")
-                    print(f"[WIZARD TEST] URL: {health_url} -> Status: {status_code}, Body: {body[:150]}")
-                    logger.info(f"Health response from {health_url}: Status {status_code}")
+                    print(
+                        f"[WIZARD TEST] URL: {health_url} -> Status: {status_code}, Body: {body[:150]}"
+                    )
+                    logger.info(
+                        f"Health response from {health_url}: Status {status_code}"
+                    )
 
                     if status_code in (200, 201):
                         self.status_var.set("CONNECTED (HTTP 200 OK)")
@@ -287,6 +295,7 @@ class SentinelEnrollmentWizard:
                         return
             except Exception as e:
                 import traceback
+
                 last_error = e
                 err_trace = traceback.format_exc()
                 print(f"[WIZARD TEST] Exception requesting {health_url}:\n{err_trace}")
@@ -364,17 +373,45 @@ class SentinelEnrollmentWizard:
             with open(cfg_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2)
 
-            # Install Windows Service if on Windows
+            # Deploy agent files and install Windows Service
             if os.name == "nt":
+                install_dir = os.path.join(
+                    os.environ.get("ProgramFiles", "C:\\Program Files"),
+                    "Endpoint Sentinel",
+                )
+                self._deploy_agent_files(install_dir, agent_dir)
+
+                svc_exe = os.path.join(install_dir, "SentinelAgentService.exe")
                 subprocess.run(
-                    'sc.exe create SentinelAgent binPath= "C:\\Program Files\\Endpoint Sentinel\\SentinelAgentService.exe" start= auto displayname= "Endpoint Sentinel Agent"',
-                    shell=True,
+                    [
+                        "sc.exe",
+                        "create",
+                        "SentinelAgent",
+                        "binPath=",
+                        f'"{svc_exe}" run',
+                        "start=",
+                        "auto",
+                        "DisplayName=",
+                        "Endpoint Sentinel Agent",
+                    ],
+                    check=True,
                 )
                 subprocess.run(
-                    "sc.exe failure SentinelAgent reset= 86400 actions= restart/60000/restart/120000/restart/300000",
-                    shell=True,
+                    [
+                        "sc.exe",
+                        "failure",
+                        "SentinelAgent",
+                        "reset=",
+                        "86400",
+                        "actions=",
+                        "restart/60000/restart/120000/restart/300000",
+                    ],
+                    check=True,
                 )
-                subprocess.run("net start SentinelAgent", shell=True)
+                subprocess.run(
+                    ["sc.exe", "start", "SentinelAgent"],
+                    check=True,
+                )
 
             messagebox.showinfo(
                 "Enrollment Success",
@@ -385,6 +422,58 @@ class SentinelEnrollmentWizard:
             messagebox.showerror(
                 "Enrollment Error", f"Failed to complete enrollment:\n\n{e}"
             )
+
+    def _deploy_agent_files(self, install_dir: str, config_dir: str) -> None:
+        """Copies the running executable and config into the installation directory."""
+        deploy_logger = logging.getLogger("agent.installer.deploy")
+        deploy_logger.info(f"Creating installation directory: {install_dir}")
+        os.makedirs(install_dir, exist_ok=True)
+
+        # Determine source executable path
+        if getattr(sys, "frozen", False):
+            # Running as PyInstaller bundle: sys.executable is the .exe itself
+            source_exe = sys.executable
+        else:
+            # Running from source: build the exe path from project dist/
+            project_root = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+            source_exe = os.path.join(project_root, "dist", "SentinelAgentSetup.exe")
+
+        target_exe = os.path.join(install_dir, "SentinelAgentService.exe")
+        deploy_logger.info(f"Copying {source_exe} -> {target_exe}")
+
+        if not os.path.exists(source_exe):
+            raise FileNotFoundError(
+                f"Agent executable not found at {source_exe}. "
+                f"Build the installer first with scripts/build_installer.py."
+            )
+
+        shutil.copy2(source_exe, target_exe)
+        deploy_logger.info(f"Deployed service executable: {target_exe}")
+
+        # Also copy config.json into install directory for service discovery
+        src_cfg = os.path.join(config_dir, "config.json")
+        if os.path.exists(src_cfg):
+            dst_cfg = os.path.join(install_dir, "config.json")
+            shutil.copy2(src_cfg, dst_cfg)
+            deploy_logger.info(f"Deployed config: {dst_cfg}")
+
+        # Create logs subdirectory
+        logs_dir = os.path.join(install_dir, "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        deploy_logger.info(f"Created logs directory: {logs_dir}")
+
+        # Verify deployment
+        if not os.path.exists(target_exe):
+            raise RuntimeError(
+                f"Deployment verification failed: {target_exe} does not exist after copy."
+            )
+
+        size_mb = os.path.getsize(target_exe) / (1024 * 1024)
+        deploy_logger.info(
+            f"Deployment verification PASSED: {target_exe} ({size_mb:.2f} MB)"
+        )
 
     def run(self):
         self.root.mainloop()

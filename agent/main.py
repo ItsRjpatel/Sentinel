@@ -197,6 +197,36 @@ def setup_installer_logging() -> str:
     return log_path
 
 
+def _is_admin() -> bool:
+    """Check if the current process has Administrator privileges."""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        return False
+
+
+def _request_elevation() -> None:
+    """Re-launch the current process with UAC elevation (Run as Administrator)."""
+    import ctypes
+    logger.info("Requesting UAC elevation for installer...")
+    if getattr(sys, "frozen", False):
+        exe = sys.executable
+        params = " ".join(sys.argv[1:])
+    else:
+        exe = sys.executable
+        params = " ".join([f'"{arg}"' for arg in sys.argv])
+    
+    result = ctypes.windll.shell32.ShellExecuteW(
+        None, "runas", exe, params, None, 1
+    )
+    if result <= 32:
+        logger.error(f"UAC elevation request failed with code: {result}")
+    sys.exit(0)
+
+
 def run_service_manager() -> None:
     """Main execution dispatcher handling GUI Wizard, Silent Install, Service SCM, and Uninstaller."""
     log_path = setup_installer_logging()
@@ -207,7 +237,13 @@ def run_service_manager() -> None:
         
         # 1. Double-clicked or launched with no arguments -> Launch GUI Enrollment Wizard
         if not argv:
-            logger.info("No command-line arguments provided. Launching GUI Enrollment Wizard...")
+            # Request admin privileges for service installation
+            if os.name == "nt" and not _is_admin():
+                logger.info("Not running as Administrator. Requesting UAC elevation...")
+                _request_elevation()
+                return
+            
+            logger.info("Running as Administrator. Launching GUI Enrollment Wizard...")
             from agent.installer.wizard import SentinelEnrollmentWizard
             wizard = SentinelEnrollmentWizard()
             wizard.run()
@@ -217,6 +253,9 @@ def run_service_manager() -> None:
 
         # 2. Silent Uninstaller
         if first_arg in ("/uninstall", "uninstall"):
+            if os.name == "nt" and not _is_admin():
+                _request_elevation()
+                return
             logger.info("Uninstall switch detected. Launching Uninstaller...")
             from agent.installer.uninstaller import run_uninstaller
             keep_cfg = "--keep-config" in argv
@@ -225,6 +264,9 @@ def run_service_manager() -> None:
 
         # 3. Silent Installation
         if first_arg in ("/s", "/silent", "--silent"):
+            if os.name == "nt" and not _is_admin():
+                _request_elevation()
+                return
             logger.info("Silent installation switch detected...")
             server_url = "http://127.0.0.1:8000"
             token = "sentinel-secret-key-change-in-production"
