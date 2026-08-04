@@ -181,44 +181,120 @@ async def async_service_start() -> None:
     logger.info("Sentinel Agent shutdown completed.")
 
 
-def run_service_manager() -> None:
-    """Manages SCM CLI installation hooks and runs local console loops."""
-    parser = argparse.ArgumentParser(description="Sentinel Windows Agent CLI Manager")
-    parser.add_argument("action", choices=["install", "uninstall", "start", "stop", "run"], help="Action to execute")
-    args = parser.parse_args()
+def setup_installer_logging() -> str:
+    """Sets up emergency installer logger writing to %TEMP%\\SentinelInstaller.log and stdout."""
+    temp_dir = os.environ.get("TEMP", os.environ.get("TMP", "C:\\Windows\\Temp"))
+    log_path = os.path.join(temp_dir, "SentinelInstaller.log")
+    
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_path, mode="a", encoding="utf-8"),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return log_path
 
-    if args.action == "run":
-        # Run agent in foreground console mode (development/manual debug runs)
+
+def run_service_manager() -> None:
+    """Main execution dispatcher handling GUI Wizard, Silent Install, Service SCM, and Uninstaller."""
+    log_path = setup_installer_logging()
+    logger.info(f"Sentinel Agent Setup starting... (Log file: {log_path})")
+
+    try:
+        argv = sys.argv[1:]
+        
+        # 1. Double-clicked or launched with no arguments -> Launch GUI Enrollment Wizard
+        if not argv:
+            logger.info("No command-line arguments provided. Launching GUI Enrollment Wizard...")
+            from agent.installer.wizard import SentinelEnrollmentWizard
+            wizard = SentinelEnrollmentWizard()
+            wizard.run()
+            return
+
+        first_arg = argv[0].lower()
+
+        # 2. Silent Uninstaller
+        if first_arg in ("/uninstall", "uninstall"):
+            logger.info("Uninstall switch detected. Launching Uninstaller...")
+            from agent.installer.uninstaller import run_uninstaller
+            keep_cfg = "--keep-config" in argv
+            run_uninstaller(keep_config=keep_cfg)
+            return
+
+        # 3. Silent Installation
+        if first_arg in ("/s", "/silent", "--silent"):
+            logger.info("Silent installation switch detected...")
+            server_url = "http://127.0.0.1:8000"
+            token = "sentinel-secret-key-change-in-production"
+            department = "IT Operations"
+
+            for arg in argv:
+                if arg.lower().startswith("/server="):
+                    server_url = arg.split("=", 1)[1]
+                elif arg.lower().startswith("/token="):
+                    token = arg.split("=", 1)[1]
+                elif arg.lower().startswith("/dept="):
+                    department = arg.split("=", 1)[1]
+
+            logger.info(f"Silent enroll with Server: {server_url}, Dept: {department}")
+            from agent.installer.wizard import SentinelEnrollmentWizard
+            wizard = SentinelEnrollmentWizard()
+            wizard.server_url_var.set(server_url)
+            wizard.token_var.set(token)
+            wizard.department_var.set(department)
+            wizard.execute_enrollment()
+            return
+
+        # 4. Agent Daemon Foreground Run Mode
+        if first_arg == "run":
+            logger.info("Running Agent daemon in foreground loop...")
+            try:
+                asyncio.run(async_service_start())
+            except KeyboardInterrupt:
+                if _stop_event:
+                    _stop_event.set()
+            return
+
+        # 5. Windows SCM Actions (install, uninstall, start, stop)
+        if first_arg in ("install", "start", "stop"):
+            if os.name == "nt":
+                import win32serviceutil
+                from agent.services.service import SentinelAgentService
+                sys.argv = [sys.argv[0], first_arg]
+                win32serviceutil.HandleCommandLine(SentinelAgentService)
+
+                if first_arg == "install":
+                    try:
+                        subprocess.run(
+                            'sc.exe failure SentinelAgent reset= 86400 actions= restart/60000/restart/120000/restart/300000',
+                            shell=True,
+                            check=True
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to register service failure actions: {e}")
+            else:
+                logger.error("Windows SCM controls are only supported on Windows platform hosts.")
+            return
+
+        # 6. Fallback for any unknown argument -> Launch GUI Wizard
+        logger.info(f"Argument '{first_arg}' passed. Launching GUI Enrollment Wizard...")
+        from agent.installer.wizard import SentinelEnrollmentWizard
+        wizard = SentinelEnrollmentWizard()
+        wizard.run()
+
+    except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
+        logger.critical(f"UNHANDLED EXCEPTION IN AGENT SETUP:\n{err_msg}")
+        print(f"CRITICAL ERROR:\n{err_msg}", file=sys.stderr)
         try:
-            asyncio.run(async_service_start())
-        except KeyboardInterrupt:
-            if _stop_event:
-                _stop_event.set()
-    else:
-        # standard Windows SCM controls
-        if os.name == "nt":
-            import win32serviceutil
-            from agent.services.service import SentinelAgentService
-            
-            # Delegate SCM action
-            sys.argv = [sys.argv[0], args.action]
-            win32serviceutil.HandleCommandLine(SentinelAgentService)
-            
-            # Configure recovery actions programmatically after installation
-            if args.action == "install":
-                logger.info("Configuring Windows Service recovery failure actions...")
-                try:
-                    subprocess.run(
-                        'sc.exe failure SentinelAgent reset= 86400 actions= restart/60000/restart/120000/restart/300000',
-                        shell=True,
-                        check=True
-                    )
-                    logger.info("SCM failure actions registered successfully.")
-                except Exception as e:
-                    logger.warning(f"Failed to register service failure actions: {e}")
-        else:
-            print("Windows SCM controls are only supported on Windows platform hosts.")
-            sys.exit(1)
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"\nCRITICAL TRACEBACK:\n{err_msg}\n")
+        except Exception:
+            pass
+        sys.exit(1)
 
 
 if __name__ == "__main__":

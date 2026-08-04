@@ -243,8 +243,15 @@ def _hash_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-# --- Endpoints ---
+@router.get("/agent/version")
+async def get_agent_version():
+    return {
+        "version": "0.9.0",
+        "download_url": "/api/v1/endpoints/download/installer",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
 
+@router.post("/agents/enroll", response_model=SuccessResponse[EnrollData])
 @router.post("/endpoints/enroll", response_model=SuccessResponse[EnrollData])
 async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
     stmt = select(User).where(User.username == "admin")
