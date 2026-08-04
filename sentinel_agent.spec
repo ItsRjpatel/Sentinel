@@ -14,13 +14,15 @@ hidden_imports = [
     'win32api',
     'win32con',
     'psutil',
+    'ctypes',
     'agent.main',
     'agent.services.service',
     'agent.installer.wizard',
+    'agent.installer.uninstaller',
     'agent.tray.tray_app',
     'agent.updater.updater',
     'agent.utils.diagnostics',
-    'agent.installer.uninstaller'
+    'agent.security.identity',
 ]
 
 datas = []
@@ -62,5 +64,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None
+    icon=None,
+    uac_admin=True,
 )
