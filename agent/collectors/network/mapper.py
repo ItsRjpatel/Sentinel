@@ -54,10 +54,10 @@ def map_raw_network_adapter(raw: Dict[str, Any]) -> NetworkAdapterInventoryData:
 
     connection_type = "Ethernet"
     wifi_signals = ["wireless", "wi-fi", "wifi", "802.11", "wlan"]
-    if any(sig in name or sig in desc for sig in wifi_signals):
-        connection_type = "WiFi"
-    elif is_vpn:
+    if is_vpn:
         connection_type = "VPN"
+    elif any(sig in name or sig in desc for sig in wifi_signals):
+        connection_type = "WiFi"
 
     def clean_str(val: Any, default: str = "Unknown") -> str:
         if val is None:

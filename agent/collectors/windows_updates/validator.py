@@ -15,11 +15,9 @@ def is_valid_update_entry(dto: WindowsUpdateInventoryData) -> bool:
     if not dto.title and not dto.description:
         return False
 
-    # 3. Reject if explicitly superseded/failed (COM API tracks this in operation_result)
-    if dto.operation_result and dto.operation_result.lower() in ["failed", "aborted"]:
-        # Only collect successfully installed updates
-        if dto.installed_state.lower() != "installed":
-            return False
+    # 3. Reject if not successfully installed (COM API tracks this in installed_state)
+    if dto.installed_state.lower() != "installed":
+        return False
 
     return True
 

@@ -266,8 +266,8 @@ class SentinelEnrollmentWizard:
         self.root.update()
 
         candidate_urls = [
-            f"{clean_base}/api/v1/health",
-            f"{clean_base}/api/v1/agent/version",
+            f"{clean_base}/health",
+            f"{clean_base}/agent/version",
         ]
 
         last_error = None
@@ -279,7 +279,7 @@ class SentinelEnrollmentWizard:
                 req = urllib.request.Request(
                     health_url, headers={"User-Agent": "SentinelAgentInstaller/0.9.0"}
                 )
-                with urllib.request.urlopen(req, timeout=5) as response:
+                with urllib.request.urlopen(req, timeout=30) as response:
                     status_code = response.status
                     body = response.read().decode("utf-8")
                     print(
@@ -319,7 +319,7 @@ class SentinelEnrollmentWizard:
 
         try:
             # Prepare registration POST
-            enroll_url = f"{server_url}/api/v1/endpoints/enroll"
+            enroll_url = f"{server_url}/endpoints/enroll"
 
             ids = get_hardware_identifiers()
             payload = {
@@ -343,7 +343,7 @@ class SentinelEnrollmentWizard:
                 method="POST",
             )
 
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=30) as resp:
                 res_body = json.loads(resp.read().decode("utf-8"))
 
             if not res_body.get("success"):

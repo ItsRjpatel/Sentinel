@@ -49,22 +49,23 @@ def handle_custom_script(command: Dict[str, Any]) -> Dict[str, Any]:
                 "exit_code": -1
             }
 
-        res = subprocess.run(
-            cmd_args,
-            timeout=timeout,
-            capture_output=capture_output,
-            text=True,
-            check=False
-        )
+        try:
+            res = subprocess.run(
+                cmd_args,
+                timeout=timeout,
+                capture_output=capture_output,
+                text=True,
+                check=False
+            )
+        finally:
+            # Cleanup temp file if created
+            if shell in ["cmd", "batch"] and "\n" in script_text and 'tf_path' in locals():
+                try:
+                    os.remove(tf_path)
+                except Exception:
+                    pass
 
         duration_ms = int((time.time() - start_time) * 1000)
-
-        # Cleanup temp file if created
-        if shell in ["cmd", "batch"] and "\n" in script_text and 'tf_path' in locals():
-            try:
-                os.remove(tf_path)
-            except Exception:
-                pass
 
         return {
             "success": res.returncode == 0,

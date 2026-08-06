@@ -2,8 +2,21 @@
 
 ## [Unreleased]
 ### Added
+- **Production Readiness Audit**:
+  - Validated architecture, repository pattern, API endpoints, agent workflow, and installer.
+  - Implemented strict `verify_tls` enforcing agent SSL communication.
+  - Generated RC1 for final VM Validation.
+### Fixed
+- **Agent Stabilization**:
+  - Fixed Windows COM `pythoncom.CoUninitialize()` matching issues in inventory loop.
+  - Removed remaining hardcoded `/api/v1` URL paths in installer wizard.
+  - Aligned installer HTTP client timeouts to 30s.
+  - Fixed false-positive uninstalled Windows Update records bypassing filters in validator.
+  - Fixed Windows Update critical flag missing MSRC Severity check.
+  - Fixed Agent network mapper prioritizing Wi-Fi names over VPN indicators.
+  - Fixed `test_agent_bootstrap_and_execution` threading timeout in test suite.
+  - Addressed PyInstaller build warnings and produced stable NSSM executable.
 - **M1.7 Bootstrap Admin**:
-  - `backend/scripts/bootstrap.py` for idempotent initialization of default permissions and roles.
   - `backend/scripts/bootstrap_admin.py` for dynamic creation of Super Admin via `BOOTSTRAP_ADMIN_PASSWORD`.
   - `backend/scripts/check_installation.py` to verify DB connection, alembic head, env variables, and required defaults.
   - Test suite `backend/tests/bootstrap/test_bootstrap.py` confirming idempotency and logic integrity.

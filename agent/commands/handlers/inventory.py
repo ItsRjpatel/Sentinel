@@ -1,5 +1,6 @@
-import time
+﻿import time
 import logging
+import sys
 
 from agent.collectors.hardware.collector import HardwareCollector
 from agent.collectors.operating_system.collector import OperatingSystemCollector
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 def execute(command: dict) -> dict:
     """Handles the RUN_INVENTORY command by executing all collectors."""
     start_time = time.time()
-    
+
     result = {
         "success": False,
         "hardware": False,
@@ -26,7 +27,7 @@ def execute(command: dict) -> dict:
         "services": False,
         "duration_ms": 0
     }
-    
+
     collectors = [
         ("hardware", HardwareCollector()),
         ("os", OperatingSystemCollector()),
@@ -36,21 +37,28 @@ def execute(command: dict) -> dict:
         ("windows_updates", WindowsUpdateCollector()),
         ("services", WindowsServiceCollector()),
     ]
-    
+
     all_success = True
-    for key, collector in collectors:
-        try:
-            # We just execute them to ensure they can run. 
-            # Output is normally uploaded by the scheduler task, but here we just collect it.
-            # Real implementation might upload, but requirement says "No upload yet. Result upload is Sprint 4 Phase 4."
-            collector.collect()
-            result[key] = True
-        except Exception as e:
-            logger.error(f"Collector {key} failed during RUN_INVENTORY command: {e}")
-            result[key] = False
-            all_success = False
+
+    is_windows = sys.platform == "win32"
+    if is_windows:
+        import pythoncom
+        pythoncom.CoInitialize()
+
+    try:
+        for key, collector in collectors:
+            try:
+                collector.collect()
+                result[key] = True
+            except Exception as e:
+                logger.error(f"Collector {key} failed during RUN_INVENTORY command: {e}")
+                result[key] = False
+                all_success = False
+    finally:
+        if is_windows:
+            pythoncom.CoUninitialize()
 
     result["success"] = all_success
     result["duration_ms"] = int((time.time() - start_time) * 1000)
-    
+
     return result

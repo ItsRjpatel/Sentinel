@@ -16,7 +16,7 @@ class AgentHTTPClient:
         self,
         base_url: str,
         storage: Optional[StorageProvider] = None,
-        timeout_seconds: int = 10,
+        timeout_seconds: int = 30,
         max_retries: int = 3,
         verify_tls: bool = True
     ) -> None:

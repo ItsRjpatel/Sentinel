@@ -61,8 +61,11 @@ async def async_service_start() -> None:
     container.http_client = AgentHTTPClient(
         base_url=config.server_url,
         storage=container.storage,
-        verify_tls=False  # Disabled verify for testing/internal domain certificates
+        verify_tls=config.verify_tls
     )
+
+    if not config.verify_tls:
+        logger.warning("TLS Verification is DISABLED via config. Production communication may be insecure.")
 
     # 5. Initialize Enrollment Service
     container.enrollment_service = EnrollmentManager(

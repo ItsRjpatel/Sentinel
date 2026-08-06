@@ -74,6 +74,6 @@ class Scheduler:
     async def _run_loop(self) -> None:
         while self._running:
             for task in self.tasks:
-                # Runs concurrently if tasks are async
-                await task.run()
+                # Runs concurrently in the background loop
+                asyncio.create_task(task.run())
             await asyncio.sleep(0.5)

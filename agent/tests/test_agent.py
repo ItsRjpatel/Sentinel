@@ -44,8 +44,8 @@ async def test_agent_bootstrap_and_execution(tmp_path, monkeypatch):
     # Start the service task in background
     bootstrap_task = asyncio.create_task(async_service_start())
     
-    # Let it run for 1.5 seconds to enroll and trigger first heartbeat
-    await asyncio.sleep(1.5)
+    # Let it run for 3.5 seconds to enroll and trigger first heartbeat
+    await asyncio.sleep(3.5)
     
     # Assert Container values are correctly bound (Dependency Injection validation)
     container = Container.get_instance()

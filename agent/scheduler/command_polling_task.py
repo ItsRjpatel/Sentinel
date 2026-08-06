@@ -34,7 +34,7 @@ class CommandPollingTask(ScheduledTask):
                 # Execute the command
                 try:
                     logger.info(f"[STAGE 3: EXECUTE] Executing command {cmd_id} ({cmd_type})...")
-                    result = self.executor.execute(command)
+                    result = await asyncio.to_thread(self.executor.execute, command)
                     logger.info(f"[STAGE 3: EXECUTE] Execution finished for {cmd_id} | Success: {result.get('success')}")
                     
                     # Extract result payload cleanly

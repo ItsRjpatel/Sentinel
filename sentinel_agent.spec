@@ -25,7 +25,9 @@ hidden_imports = [
     'agent.security.identity',
 ]
 
-datas = []
+datas = [
+    ('agent/bin/nssm.exe', 'bin')
+]
 
 a = Analysis(
     ['agent/main.py'],
@@ -52,7 +54,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='SentinelAgentSetup',
+    name='SentinelAgentSetup_NSSM',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -65,5 +67,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
-    uac_admin=True,
 )

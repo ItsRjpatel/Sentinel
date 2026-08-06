@@ -34,13 +34,14 @@ def normalize_date(date_str: str) -> str:
         return f"{parts[2]}-{parts[0].zfill(2)}-{parts[1].zfill(2)}"
     return s[:100]
 
-def determine_flags(title: str, description: str, category: str):
+def determine_flags(title: str, description: str, category: str, msrc_severity: str = ""):
     title_lower = title.lower()
     desc_lower = description.lower()
     cat_lower = category.lower()
+    msrc_lower = msrc_severity.lower()
     
     is_sec = "security" in title_lower or "security" in desc_lower or "security update" in cat_lower
-    is_crit = "critical" in title_lower or "critical update" in cat_lower
+    is_crit = "critical" in title_lower or "critical update" in cat_lower or "critical" in msrc_lower
     is_feat = "feature update" in title_lower or "upgrades" in cat_lower
     is_cumul = "cumulative update" in title_lower
     
@@ -92,8 +93,9 @@ def map_com_update(raw: Dict[str, Any]) -> WindowsUpdateInventoryData:
 
     desc = clean_str(raw.get("Description"), default="", max_len=1000)
     category = clean_str(raw.get("Category"), default="Updates", max_len=255)
+    msrc_sev = clean_str(raw.get("MsrcSeverity"), default="Unknown", max_len=50)
     
-    is_sec, is_crit, is_feat, is_cumul = determine_flags(title, desc, category)
+    is_sec, is_crit, is_feat, is_cumul = determine_flags(title, desc, category, msrc_sev)
 
     return WindowsUpdateInventoryData(
         kb_number=kb,
