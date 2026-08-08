@@ -377,7 +377,7 @@ export const LiveConsolePage: React.FC = () => {
           }
         }}
         onClearTerminal={handleClearTerminal}
-        onOpenOptions={() => setIsOptionsOpen(true)}
+        onOpenOptions={() => {}}
       />
 
       {/* Multi-Endpoint Sessions Tab Bar */}
@@ -490,3 +490,4 @@ export const LiveConsolePage: React.FC = () => {
     </div>
   );
 };
+

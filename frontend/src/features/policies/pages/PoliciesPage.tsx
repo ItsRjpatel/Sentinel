@@ -14,7 +14,7 @@ import {
   Tv,
   Zap
 } from "lucide-react";
-import { usePoliciesList, useCreatePolicy, useDeletePolicy, useClonePolicy } from "../api/policiesApi";
+// import { usePoliciesList, useCreatePolicy, useDeletePolicy, useClonePolicy } from "../api/policiesApi";
 import { Card, LoadingSkeleton } from "../../../components/ui";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -30,33 +30,9 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 
 export const PoliciesPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("Defender");
-  const [description, setDescription] = useState("");
-
-  const { data: policies = [], isLoading } = usePoliciesList(
-    selectedCategory === "ALL" ? undefined : selectedCategory
-  );
-
-  const createMutation = useCreatePolicy();
-  const deleteMutation = useDeletePolicy();
-  const cloneMutation = useClonePolicy();
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    await createMutation.mutateAsync({
-      name,
-      category,
-      description,
-      settings: { enabled: true, mode: "Enforce" }
-    });
-    setName("");
-    setDescription("");
-    setIsCreateOpen(false);
-  };
-
+  const isLoading = false;
+  const policies: any[] = [];
+  
   return (
     <div className="p-6 space-y-6 bg-surface min-h-screen text-on-surface">
       {/* Header */}
@@ -71,8 +47,8 @@ export const PoliciesPage: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setIsCreateOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary font-bold text-xs rounded-xl shadow-md hover:opacity-90 transition-all cursor-pointer"
+          disabled
+          className="flex items-center gap-1.5 px-4 py-2 bg-primary/50 text-on-primary/50 font-bold text-xs rounded-xl cursor-not-allowed"
         >
           <Plus className="h-4 w-4" /> Create Policy
         </button>
@@ -105,8 +81,8 @@ export const PoliciesPage: React.FC = () => {
       ) : policies.length === 0 ? (
         <Card className="p-12 text-center text-on-surface-variant border-dashed">
           <ShieldCheck className="h-12 w-12 text-primary mx-auto mb-3 opacity-40" />
-          <h3 className="text-body-md font-bold text-on-surface mb-1">No Security Policies Found</h3>
-          <p className="text-xs">Create your first policy to enforce configuration profiles across your Windows endpoints.</p>
+          <h3 className="text-body-md font-bold text-on-surface mb-1">Feature Planned for Future Release</h3>
+          <p className="text-xs">The security policy deployment engine is currently in development.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -130,14 +106,14 @@ export const PoliciesPage: React.FC = () => {
 
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => cloneMutation.mutate({ id: pol.id, newName: `${pol.name} (Copy)` })}
+                        onClick={() => {}}
                         className="p-1.5 hover:bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-lg transition-colors cursor-pointer"
                         title="Clone Policy"
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                       <button
-                        onClick={() => deleteMutation.mutate(pol.id)}
+                        onClick={() => {}}
                         className="p-1.5 hover:bg-error/10 text-on-surface-variant hover:text-error rounded-lg transition-colors cursor-pointer"
                         title="Delete Policy"
                       >
@@ -170,70 +146,7 @@ export const PoliciesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Create Policy Modal */}
-      {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <form onSubmit={handleCreate} className="w-full max-w-md bg-surface-container-low border border-outline-variant rounded-2xl p-6 space-y-4 shadow-2xl">
-            <h3 className="text-body-md font-black text-on-surface">Create Security Policy Profile</h3>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-on-surface">Policy Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="E.g. Windows Defender Real-Time Protection"
-                className="w-full p-2.5 bg-surface-container border border-outline-variant rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-on-surface">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full p-2.5 bg-surface-container border border-outline-variant rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary"
-              >
-                <option value="Defender">Windows Defender Antivirus</option>
-                <option value="Firewall">Windows Defender Firewall</option>
-                <option value="BitLocker">BitLocker Encryption</option>
-                <option value="USB">USB & Removable Media Storage</option>
-                <option value="Password">Account Password Policy</option>
-                <option value="WindowsUpdate">Windows Update Patching</option>
-                <option value="RDP">Remote Desktop (RDP)</option>
-                <option value="Power">Power & Sleep Settings</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-on-surface">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter baseline policy intent and enforcement rules..."
-                className="w-full p-2.5 bg-surface-container border border-outline-variant rounded-xl text-xs text-on-surface focus:outline-none focus:border-primary h-20"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/40">
-              <button
-                type="button"
-                onClick={() => setIsCreateOpen(false)}
-                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl shadow-md hover:opacity-90"
-              >
-                Save Policy
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 };

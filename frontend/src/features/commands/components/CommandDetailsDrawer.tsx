@@ -1,5 +1,5 @@
 import React from "react";
-import { X, AlertTriangle, Terminal, Calendar, Code, FileText } from "lucide-react";
+import { X, AlertTriangle, Terminal, Code, FileText } from "lucide-react";
 import { Card, LoadingSkeleton } from "../../../components/ui";
 import { LogViewer } from "../../../components/ui/LogViewer";
 import { useCommandDetails } from "../api/commandsApi";
@@ -74,16 +74,6 @@ export const CommandDetailsDrawer = React.memo(function CommandDetailsDrawer({
                 </div>
               </div>
 
-              {cmd.scheduled_at && (
-                <div className="p-2.5 bg-warning/10 border border-warning/30 rounded-lg flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-warning font-bold">
-                    <Calendar className="h-4 w-4" /> Scheduled Execution
-                  </div>
-                  <span className="font-mono font-extrabold text-on-surface">
-                    {new Date(cmd.scheduled_at).toLocaleString()} ({cmd.timezone || "UTC"})
-                  </span>
-                </div>
-              )}
             </Card>
 
             {/* Execution Timeline */}
@@ -146,3 +136,4 @@ export const CommandDetailsDrawer = React.memo(function CommandDetailsDrawer({
     </div>
   );
 });
+

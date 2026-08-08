@@ -6,8 +6,6 @@ import {
   Terminal,
   RotateCw,
   Power,
-  Lock,
-  Unlock,
   Trash2,
   Activity,
   WifiOff,
@@ -119,16 +117,7 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
           </button>
 
           <button
-            onClick={() => dispatchCommand("SYSTEM_INFO", "Run Command")}
-            disabled={loadingAction === "Run Command" || !overview?.id}
-            className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-md text-xs font-bold flex items-center gap-1.5 border border-outline-variant/40 hover:bg-surface-container-highest transition-colors disabled:opacity-50"
-          >
-            {loadingAction === "Run Command" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
-            <span>Run Command</span>
-          </button>
-
-          <button
-            onClick={() => dispatchCommand("SYSTEM_INFO", "Refresh Inventory", { collect: "all" })}
+            onClick={() => dispatchCommand("REQUEST_INVENTORY", "Refresh Inventory", { collect: "all" })}
             disabled={loadingAction === "Refresh Inventory" || !overview?.id}
             className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-md text-xs font-bold flex items-center gap-1.5 border border-outline-variant/40 hover:bg-surface-container-highest transition-colors disabled:opacity-50"
           >
@@ -143,24 +132,6 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
           >
             {loadingAction === "Restart Agent" ? <Loader2 className="h-3.5 w-3.5 animate-spin text-warning" /> : <Power className="h-3.5 w-3.5 text-warning" />}
             <span>Restart Agent</span>
-          </button>
-
-          <button
-            onClick={() => dispatchCommand("ISOLATE_NETWORK", "Isolate")}
-            disabled={loadingAction === "Isolate" || !overview?.id}
-            className="px-3 py-1.5 bg-warning/15 text-warning rounded-md text-xs font-bold flex items-center gap-1.5 border border-warning/30 hover:bg-warning/20 transition-colors disabled:opacity-50"
-          >
-            {loadingAction === "Isolate" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
-            <span>Isolate</span>
-          </button>
-
-          <button
-            onClick={() => dispatchCommand("RESTORE_NETWORK", "Release")}
-            disabled={loadingAction === "Release" || !overview?.id}
-            className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-md text-xs font-bold flex items-center gap-1.5 border border-outline-variant/40 hover:bg-surface-container-highest transition-colors disabled:opacity-50"
-          >
-            {loadingAction === "Release" ? <Loader2 className="h-3.5 w-3.5 animate-spin text-success" /> : <Unlock className="h-3.5 w-3.5 text-success" />}
-            <span>Release</span>
           </button>
 
           <button
@@ -183,4 +154,5 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
     </div>
   );
 });
+
 

@@ -1,27 +1,9 @@
 import React, { useState } from "react";
-import { Settings, Save, ShieldAlert, Cpu, Mail, Globe } from "lucide-react";
-import { Card, Button, LoadingSkeleton } from "../../../components/ui";
-import { useSettingsList, useUpdateSetting } from "../api/settingsApi";
-
+import { Settings, ShieldAlert, Cpu, Mail, Globe } from "lucide-react";
+// 
 export const SettingsPage = React.memo(function SettingsPage() {
-  const { data: settings = [], isLoading } = useSettingsList();
-  const updateMutation = useUpdateSetting();
-
-  const [activeTab, setActiveTab] = useState("general");
-
-  if (isLoading) {
-    return <LoadingSkeleton height={500} />;
-  }
-
-  const handleSaveCategory = async (key: string, currentVal: any) => {
-    try {
-      await updateMutation.mutateAsync({ key, value: currentVal });
-      alert(`Settings for ${key} saved successfully!`);
-    } catch (err: any) {
-      alert(`Failed to save settings: ${err.message || "Unknown error"}`);
-    }
-  };
-
+        const [activeTab, setActiveTab] = useState("general");
+  
   const sections = [
     { id: "general", label: "General Settings", icon: Globe },
     { id: "security", label: "Security & Auth", icon: ShieldAlert },
@@ -68,61 +50,17 @@ export const SettingsPage = React.memo(function SettingsPage() {
       </div>
 
       {/* Tab Panels */}
-      {settings.map((item) => {
-        if (item.key !== activeTab) return null;
-
-        return (
-          <Card key={item.key} className="p-6 bg-surface-container-low border-outline-variant space-y-6">
-            <div className="flex items-center justify-between border-b border-outline-variant/40 pb-3">
-              <div>
-                <h3 className="text-body-lg font-black text-on-surface uppercase">{item.key} Configuration</h3>
-                <p className="text-xs text-on-surface-variant">{item.description}</p>
-              </div>
-              <Button
-                onClick={() => handleSaveCategory(item.key, item.value)}
-                disabled={updateMutation.isPending}
-                variant="primary"
-                size="sm"
-                leftIcon={<Save className="h-4 w-4" />}
-                className="font-extrabold shadow-xs"
-              >
-                {updateMutation.isPending ? "Saving..." : "Save Settings"}
-              </Button>
-            </div>
-
-            {/* Render KV Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-medium">
-              {Object.entries(item.value).map(([subKey, subVal]) => (
-                <div key={subKey} className="space-y-1 bg-surface-container-high p-3 rounded-xl border border-outline-variant/40">
-                  <label className="font-bold text-on-surface uppercase text-[11px]">{subKey.replace(/_/g, " ")}</label>
-                  {typeof subVal === "boolean" ? (
-                    <div className="flex items-center gap-2 pt-1">
-                      <input
-                        type="checkbox"
-                        checked={subVal}
-                        onChange={(e) => {
-                          item.value[subKey] = e.target.checked;
-                        }}
-                        className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary"
-                      />
-                      <span className="text-on-surface font-bold">{subVal ? "Enabled" : "Disabled"}</span>
-                    </div>
-                  ) : (
-                    <input
-                      type={typeof subVal === "number" ? "number" : "text"}
-                      defaultValue={String(subVal)}
-                      onChange={(e) => {
-                        item.value[subKey] = typeof subVal === "number" ? Number(e.target.value) : e.target.value;
-                      }}
-                      className="w-full p-2 bg-surface-container-low border border-outline-variant/50 rounded-lg text-on-surface font-bold focus:outline-none focus:border-primary"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </Card>
-        );
-      })}
+      {/* Coming Soon Panel */}
+      <div className="flex justify-center py-20">
+        <div className="text-center bg-surface-container border border-outline-variant/60 rounded-xl p-10 max-w-lg">
+          <Settings className="h-12 w-12 text-primary/40 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-on-surface mb-2">Feature Planned for Future Release</h2>
+          <p className="text-sm text-on-surface-variant">
+            The Enterprise System Settings module is currently in development.
+          </p>
+        </div>
+      </div>
     </div>
   );
 });
+

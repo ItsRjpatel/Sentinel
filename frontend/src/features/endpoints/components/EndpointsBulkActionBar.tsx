@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Terminal, RotateCw, Shield, Power, Lock, Trash2, CheckSquare } from "lucide-react";
+import { Terminal, RotateCw, Power, CheckSquare } from "lucide-react";
 
 interface EndpointsBulkActionBarProps {
   selectedCount: number;
@@ -47,33 +47,14 @@ export const EndpointsBulkActionBar = React.memo(function EndpointsBulkActionBar
         </button>
 
         <button
-          onClick={() => navigate("/policies")}
-          className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded text-xs font-bold flex items-center gap-1 hover:bg-surface-container-highest border border-outline-variant/40"
-        >
-          <Shield className="h-3.5 w-3.5 text-tertiary" /> Assign Policy
-        </button>
-
-        <button
           onClick={() => navigate("/commands")}
           className="px-2.5 py-1 bg-surface-container-high text-on-surface rounded text-xs font-bold flex items-center gap-1 hover:bg-surface-container-highest border border-outline-variant/40"
         >
           <Power className="h-3.5 w-3.5 text-warning" /> Restart Agent
         </button>
 
-        <button
-          onClick={() => navigate("/commands")}
-          className="px-2.5 py-1 bg-warning/15 text-warning rounded text-xs font-bold flex items-center gap-1 hover:bg-warning/20 border border-warning/30"
-        >
-          <Lock className="h-3.5 w-3.5" /> Isolate
-        </button>
-
-        <button
-          onClick={() => navigate("/commands")}
-          className="px-2.5 py-1 bg-error/15 text-error rounded text-xs font-bold flex items-center gap-1 hover:bg-error/20 border border-error/30"
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Delete
-        </button>
       </div>
     </div>
   );
 });
+

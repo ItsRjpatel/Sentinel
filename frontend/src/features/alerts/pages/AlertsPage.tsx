@@ -2,74 +2,26 @@ import React, { useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { AlertsSummaryCards } from "../components/AlertsSummaryCards";
 import { AlertsToolbar } from "../components/AlertsToolbar";
-import { AlertsTable } from "../components/AlertsTable";
 import { AlertDetailsDrawer } from "../components/AlertDetailsDrawer";
-import {
-  useAlertsList,
-  useAcknowledgeAlert,
-  useResolveAlert,
-  useReopenAlert,
-  useAssignAlert,
-} from "../api/alertsApi";
+// import {
+//   useAlertsList,
+//   useAcknowledgeAlert,
+//   useResolveAlert,
+//   useReopenAlert,
+//   useAssignAlert,
+// } from "../api/alertsApi";
 
 export const AlertsPage = React.memo(function AlertsPage() {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [page, setPage] = useState(1);
-  const [selectedDetailsId, setSelectedDetailsId] = useState<string | null>(null);
+    const [selectedDetailsId, setSelectedDetailsId] = useState<string | null>(null);
 
-  const { data, isLoading, isFetching, refetch } = useAlertsList({
-    severity: severityFilter,
-    status: statusFilter,
-    search,
-    page,
-    page_size: 20,
-  });
+      const isFetching = false;
+  const refetch = () => {};
 
-  const ackMutation = useAcknowledgeAlert();
-  const resolveMutation = useResolveAlert();
-  const reopenMutation = useReopenAlert();
-  const assignMutation = useAssignAlert();
 
-  const handleAcknowledge = async (id: string) => {
-    try {
-      await ackMutation.mutateAsync(id);
-    } catch (err: any) {
-      alert(`Failed to acknowledge alert: ${err.message || "Unknown error"}`);
-    }
-  };
-
-  const handleResolve = async (id: string) => {
-    const notes = prompt("Enter resolution notes (optional):");
-    try {
-      await resolveMutation.mutateAsync({ id, resolutionNotes: notes || undefined });
-    } catch (err: any) {
-      alert(`Failed to resolve alert: ${err.message || "Unknown error"}`);
-    }
-  };
-
-  const handleReopen = async (id: string) => {
-    try {
-      await reopenMutation.mutateAsync(id);
-    } catch (err: any) {
-      alert(`Failed to reopen alert: ${err.message || "Unknown error"}`);
-    }
-  };
-
-  const handleAssign = async (id: string) => {
-    const analyst = prompt("Enter analyst username to assign:");
-    if (!analyst) return;
-    try {
-      await assignMutation.mutateAsync({ id, analyst });
-    } catch (err: any) {
-      alert(`Failed to assign alert: ${err.message || "Unknown error"}`);
-    }
-  };
-
-  const isMutating =
-    ackMutation.isPending || resolveMutation.isPending || reopenMutation.isPending || assignMutation.isPending;
-
+  
   return (
     <div className="w-full space-y-4 px-2 sm:px-4 py-2">
       {/* Header Banner */}
@@ -93,30 +45,25 @@ export const AlertsPage = React.memo(function AlertsPage() {
       {/* Row 2: Enterprise Toolbar */}
       <AlertsToolbar
         search={search}
-        onSearchChange={(v) => { setSearch(v); setPage(1); }}
+        onSearchChange={(v) => { setSearch(v); {}; }}
         severityFilter={severityFilter}
-        onSeverityFilterChange={(v) => { setSeverityFilter(v); setPage(1); }}
+        onSeverityFilterChange={(v) => { setSeverityFilter(v); {}; }}
         statusFilter={statusFilter}
-        onStatusFilterChange={(v) => { setStatusFilter(v); setPage(1); }}
+        onStatusFilterChange={(v) => { setStatusFilter(v); {}; }}
         onRefresh={() => refetch()}
         isFetching={isFetching}
       />
 
-      {/* Row 3: Enterprise Alerts Table */}
-      <AlertsTable
-        items={data?.items || []}
-        total={data?.total || 0}
-        page={page}
-        pageSize={20}
-        onPageChange={setPage}
-        isLoading={isLoading}
-        onViewDetails={setSelectedDetailsId}
-        onAcknowledge={handleAcknowledge}
-        onResolve={handleResolve}
-        onReopen={handleReopen}
-        onAssign={handleAssign}
-        isMutating={isMutating}
-      />
+      {/* Enterprise Alerts Table */}
+      <div className="flex justify-center py-20">
+        <div className="text-center bg-surface-container border border-outline-variant/60 rounded-xl p-10 max-w-lg">
+          <ShieldAlert className="h-12 w-12 text-primary/40 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-on-surface mb-2">Feature Planned for Future Release</h2>
+          <p className="text-sm text-on-surface-variant">
+            The advanced Security Alerts Center is currently in development and will be available in an upcoming update.
+          </p>
+        </div>
+      </div>
 
       {/* Drawer Overlay */}
       <AlertDetailsDrawer
@@ -126,3 +73,4 @@ export const AlertsPage = React.memo(function AlertsPage() {
     </div>
   );
 });
+
