@@ -31,6 +31,8 @@ router = APIRouter(tags=["endpoints"])
 # --- Schemas ---
 
 class EnrollRequest(BaseModel):
+    agent_id: str
+    identity_version: int = 1
     hostname: str
     os_version: str
     hardware_hash: str
@@ -263,20 +265,56 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
         if not user:
             raise HTTPException(status_code=500, detail="No system users available to host session.")
 
-    stmt = select(Endpoint).where(Endpoint.hardware_hash == data.hardware_hash)
+    # Search by hardware_hash (primary physical identity) OR agent_id (logical identity)
+    stmt = select(Endpoint).where(
+        or_(
+            Endpoint.hardware_hash == data.hardware_hash,
+            Endpoint.agent_id == data.agent_id
+        )
+    )
     res = await db.execute(stmt)
-    endpoint = res.scalar_one_or_none()
+    endpoints = res.scalars().all()
+    
+    endpoint = None
+    if endpoints:
+        # Prefer the record matching hardware_hash if there's a conflict
+        endpoint = next((e for e in endpoints if e.hardware_hash == data.hardware_hash), endpoints[0])
 
     if not endpoint:
         endpoint = Endpoint(
+            agent_id=data.agent_id,
+            identity_version=data.identity_version,
             hostname=data.hostname,
             os_version=data.os_version,
             hardware_hash=data.hardware_hash,
             mac_addresses=data.mac_addresses,
             ip_addresses=data.ip_addresses,
-            status="healthy"
+            status="healthy",
+            identity_anomaly=False
         )
         db.add(endpoint)
+        await db.flush()
+    else:
+        # Clone detection heuristic
+        if endpoint.hardware_hash != data.hardware_hash:
+            # Identity mismatch, log event and flag as anomaly
+            import logging
+            logger = logging.getLogger("sentinel.security")
+            logger.warning(
+                f"Identity Anomaly Detected! AgentID: {data.agent_id} | "
+                f"Previous Hash: {endpoint.hardware_hash} | "
+                f"New Hash: {data.hardware_hash} | "
+                f"Reason: Hardware fingerprint changed."
+            )
+            endpoint.identity_anomaly = True
+            
+        endpoint.agent_id = data.agent_id
+        endpoint.hostname = data.hostname
+        endpoint.os_version = data.os_version
+        endpoint.ip_addresses = data.ip_addresses
+        endpoint.mac_addresses = data.mac_addresses
+        endpoint.status = "healthy"
+        endpoint.last_seen = datetime.now(timezone.utc)
         await db.flush()
 
     access_token = create_access_token(

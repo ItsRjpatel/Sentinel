@@ -23,6 +23,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { cn } from "../../utils/cn";
 import { DropdownMenu } from "../ui/DropdownMenu";
+import { useNotificationsList, useMarkAllNotificationsRead } from "../../features/notifications/api/notificationsApi";
 
 const routeTitles: Record<string, string> = {
   "/": "Dashboard",
@@ -40,15 +41,7 @@ const routeTitles: Record<string, string> = {
   "/software": "Software Inventory",
 };
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  time: string;
-  unread: boolean;
-  type: "alert" | "command" | "agent";
-  url: string;
-}
+
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -65,37 +58,11 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: "notif-1",
-      title: "Critical Security Alert",
-      subtitle: "High CPU utilization detected on DESKTOP-JK4JV9R",
-      time: "2 mins ago",
-      unread: true,
-      type: "alert",
-      url: "/alerts",
-    },
-    {
-      id: "notif-2",
-      title: "Command Execution Completed",
-      subtitle: "Bulk SYSTEM_INFO completed on 4 endpoints",
-      time: "15 mins ago",
-      unread: true,
-      type: "command",
-      url: "/commands",
-    },
-    {
-      id: "notif-3",
-      title: "New Agent Enrolled",
-      subtitle: "Endpoint SRV-DB-PROD-01 registered successfully",
-      time: "1 hour ago",
-      unread: true,
-      type: "agent",
-      url: "/endpoints",
-    },
-  ]);
+  
+  const { data: notifications = [], isError } = useNotificationsList(false);
+  const markAllReadMutation = useMarkAllNotificationsRead();
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
   const currentTitle = routeTitles[location.pathname] || "Overview";
 
   // Ctrl+K / Cmd+K global keyboard shortcut listener
@@ -148,7 +115,7 @@ export function Header() {
   }, [searchQuery]);
 
   const markAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+    markAllReadMutation.mutate();
   };
 
   const userMenuItems = [
@@ -307,40 +274,53 @@ export function Header() {
 
                 {/* Notifications List */}
                 <div className="divide-y divide-outline-variant/30 max-h-72 overflow-y-auto">
-                  {notifications.map((n) => {
-                    const Icon = n.type === "alert" ? ShieldAlert : n.type === "command" ? Terminal : Activity;
-                    return (
-                      <button
-                        key={n.id}
-                        onClick={() => {
-                          setIsNotificationOpen(false);
-                          navigate(n.url);
-                        }}
-                        className={cn(
-                          "w-full text-left p-3 flex items-start gap-3 hover:bg-surface-container-highest transition-colors group cursor-pointer",
-                          n.unread ? "bg-surface-container-low/40" : ""
-                        )}
-                      >
-                        <div className={cn(
-                          "p-2 rounded-lg flex-shrink-0 mt-0.5",
-                          n.type === "alert" ? "bg-error/10 text-error" : n.type === "command" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
-                        )}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <p className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate">
-                              {n.title}
-                            </p>
-                            <span className="text-[10px] text-on-surface-variant/70 flex-shrink-0">{n.time}</span>
+                  {isError ? (
+                    <div className="p-8 text-center text-on-surface-variant">
+                      <p className="text-xs font-bold text-error">Unable to load notifications</p>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-8 text-center text-on-surface-variant">
+                      <Bell className="h-8 w-8 text-primary mx-auto mb-2 opacity-40" />
+                      <p className="text-xs font-bold text-on-surface">No notifications</p>
+                    </div>
+                  ) : (
+                    notifications.map((n: any) => {
+                      const Icon = n.category === "SECURITY" ? ShieldAlert : n.category === "COMMAND" ? Terminal : Activity;
+                      return (
+                        <button
+                          key={n.id}
+                          onClick={() => {
+                            setIsNotificationOpen(false);
+                            navigate(n.link || "/notifications");
+                          }}
+                          className={cn(
+                            "w-full text-left p-3 flex items-start gap-3 hover:bg-surface-container-highest transition-colors group cursor-pointer",
+                            !n.is_read ? "bg-surface-container-low/40" : ""
+                          )}
+                        >
+                          <div className={cn(
+                            "p-2 rounded-lg flex-shrink-0 mt-0.5",
+                            n.category === "SECURITY" ? "bg-error/10 text-error" : n.category === "COMMAND" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
+                          )}>
+                            <Icon className="h-4 w-4" />
                           </div>
-                          <p className="text-[11px] text-on-surface-variant font-medium line-clamp-2 mt-0.5">
-                            {n.subtitle}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate">
+                                {n.title}
+                              </p>
+                              <span className="text-[10px] text-on-surface-variant/70 flex-shrink-0">
+                                {new Date(n.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-on-surface-variant font-medium line-clamp-2 mt-0.5">
+                              {n.message}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
 
                 {/* Footer */}

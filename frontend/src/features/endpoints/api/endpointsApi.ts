@@ -21,6 +21,11 @@ export interface EndpointItem {
   policy_tag: string;
 }
 
+export const isEndpointOnline = (ep: any): boolean => {
+  if (!ep) return false;
+  return ep.is_online || ep.status?.toLowerCase() === "online" || ep.status?.toLowerCase() === "healthy";
+};
+
 export interface EndpointsSummary {
   total_endpoints: number;
   online_count: number;

@@ -20,7 +20,11 @@ class AgentHTTPClient:
         max_retries: int = 3,
         verify_tls: bool = True
     ) -> None:
-        self.base_url = base_url.rstrip("/") + "/"
+        server_base = base_url.rstrip("/")
+        if server_base.endswith("/api/v1"):
+            self.base_url = server_base + "/"
+        else:
+            self.base_url = server_base + "/api/v1/"
         self.storage = storage
         self.timeout = httpx.Timeout(timeout_seconds)
         self.max_retries = max_retries

@@ -31,7 +31,7 @@ if IS_WINDOWS:
             win32event.SetEvent(self.hWaitStop)
             self.is_running = False
 
-        def SvcDoStart(self) -> None:
+        def SvcDoRun(self) -> None:
             servicemanager.LogMsg(
                 servicemanager.EVENTLOG_INFORMATION_TYPE,
                 servicemanager.PYS_SERVICE_STARTED,
@@ -52,10 +52,16 @@ if IS_WINDOWS:
             win32event.WaitForSingleObject(self.hWaitStop, win32event.INFINITE)
 
             # Signal async loop to shut down gracefully
-            self.loop.call_soon_threadsafe(self.loop.stop)
-            self.thread.join(timeout=10)
+            from agent.main import _stop_event
+            if _stop_event is not None:
+                self.loop.call_soon_threadsafe(_stop_event.set)
+            
+            # Wait for graceful shutdown sequence to complete
+            self.thread.join(timeout=15)
+
 
         def _run_async_loop(self) -> None:
+            import asyncio
             asyncio.set_event_loop(self.loop)
             from agent.main import async_service_start
             try:
@@ -63,6 +69,10 @@ if IS_WINDOWS:
             except Exception as e:
                 # Log critical service crash
                 logging.getLogger().critical(f"Agent service crashed: {e}", exc_info=True)
+            finally:
+                if hasattr(self.loop, 'shutdown_default_executor'):
+                    self.loop.run_until_complete(self.loop.shutdown_default_executor())
+                self.loop.close()
 else:
     # Cross-platform mock service base class for test runs on non-Windows developer systems
     class SentinelAgentService:

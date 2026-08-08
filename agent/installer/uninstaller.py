@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger("agent.uninstaller")
 
-def run_uninstaller(keep_config: bool = False):
+def run_uninstaller(purge: bool = False):
     """Performs clean uninstallation of Sentinel Agent service, files, and registry entries."""
     logger.info("Starting Endpoint Sentinel Agent Uninstallation...")
 
@@ -31,7 +31,7 @@ def run_uninstaller(keep_config: bool = False):
                 logger.error(f"Failed to remove installation directory: {e}")
 
         # 3. Optional ProgramData Cleanup
-        if not keep_config:
+        if purge:
             prog_data = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
             data_dir = os.path.join(prog_data, "EndpointSentinel")
             if os.path.exists(data_dir):
@@ -41,7 +41,7 @@ def run_uninstaller(keep_config: bool = False):
                 except Exception as e:
                     logger.error(f"Failed to remove data directory: {e}")
         else:
-            logger.info("Preserving configuration data per user request.")
+            logger.info("Preserving configuration data per standard uninstall behavior.")
 
         # 4. Remove Registry Uninstall Key
         try:
@@ -55,7 +55,7 @@ def run_uninstaller(keep_config: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Endpoint Sentinel Agent Uninstaller")
-    parser.add_argument("--keep-config", action="store_true", help="Preserve agent configuration and data directory")
+    parser.add_argument("--purge", action="store_true", help="Force wipe of agent configuration and identity data")
     args = parser.parse_args()
 
-    run_uninstaller(keep_config=args.keep_config)
+    run_uninstaller(purge=args.purge)

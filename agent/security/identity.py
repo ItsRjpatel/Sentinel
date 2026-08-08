@@ -84,7 +84,7 @@ def get_hardware_identifiers() -> Dict[str, str]:
 def generate_machine_fingerprint() -> str:
     """Generates a stable, unique SHA-256 fingerprint identifying the physical endpoint."""
     ids = get_hardware_identifiers()
-    raw_sig = f"{ids['bios_uuid']}|{ids['cpu_id']}|{ids['motherboard_serial']}|{ids['mac_address']}"
+    raw_sig = f"{ids['bios_uuid']}|{ids['cpu_id']}|{ids['motherboard_serial']}"
     return hashlib.sha256(raw_sig.encode("utf-8")).hexdigest()
 
 
@@ -95,17 +95,20 @@ class AgentIdentity:
         self,
         machine_fingerprint: str,
         installation_id: str,
-        agent_uuid: Optional[str] = None
+        agent_uuid: str,
+        identity_version: int = 1
     ) -> None:
         self.machine_fingerprint = machine_fingerprint
         self.installation_id = installation_id
         self.agent_uuid = agent_uuid
+        self.identity_version = identity_version
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "machine_fingerprint": self.machine_fingerprint,
             "installation_id": self.installation_id,
-            "agent_uuid": self.agent_uuid
+            "agent_uuid": self.agent_uuid,
+            "identity_version": self.identity_version
         }
 
 
@@ -113,21 +116,24 @@ async def load_or_create_identity(storage: StorageProvider) -> AgentIdentity:
     """Loads identity parameters from secure storage, or registers a new hardware fingerprint."""
     data = await storage.read("identity")
     
-    if data:
+    if data and data.get("agent_uuid"):
         return AgentIdentity(
             machine_fingerprint=data.get("machine_fingerprint", ""),
             installation_id=data.get("installation_id", ""),
-            agent_uuid=data.get("agent_uuid")
+            agent_uuid=data.get("agent_uuid"),
+            identity_version=data.get("identity_version", 1)
         )
     
     # Generate new identity parameters
     fingerprint = generate_machine_fingerprint()
     install_id = str(uuid.uuid4())
+    agent_id = str(uuid.uuid4())
     
     identity = AgentIdentity(
         machine_fingerprint=fingerprint,
         installation_id=install_id,
-        agent_uuid=None
+        agent_uuid=agent_id,
+        identity_version=1
     )
     
     await storage.write("identity", identity.to_dict())

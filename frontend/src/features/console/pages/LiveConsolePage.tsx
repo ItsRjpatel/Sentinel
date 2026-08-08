@@ -12,12 +12,14 @@ import type {
   TerminalLine,
   ConsoleCommandRecord
 } from "../types/consoleTypes";
-import { useEndpoints } from "../../endpoints/api/endpointsApi";
+import { useEndpoints, isEndpointOnline } from "../../endpoints/api/endpointsApi";
 import { postQueueSingleCommand, fetchCommandDetails } from "../../commands/api/commandsApi";
 import { useAuth } from "../../../contexts/AuthContext";
 import { X, Monitor } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 export const LiveConsolePage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const { data: endpointsResponse, refetch: refetchEndpoints } = useEndpoints();
   const { user } = useAuth();
 
@@ -46,18 +48,29 @@ export const LiveConsolePage: React.FC = () => {
     executionPolicy: "Bypass"
   };
 
-  // Auto-initialize first online endpoint on load
+  // Auto-initialize first online endpoint on load or specific requested endpoint
   useEffect(() => {
-    if (endpoints.length > 0 && !activeEndpointId) {
-      const firstEp = endpoints[0];
-      createOrActivateSession(firstEp);
+    if (endpoints.length > 0) {
+      const requestedEndpointId = searchParams.get("endpointId");
+      if (requestedEndpointId && !sessions[requestedEndpointId]) {
+        const targetEp = endpoints.find((e: any) => e.id === requestedEndpointId);
+        if (targetEp) {
+          createOrActivateSession(targetEp);
+          return;
+        } else {
+          setActiveEndpointId(requestedEndpointId);
+        }
+      } else if (!activeEndpointId && !requestedEndpointId) {
+        const firstEp = endpoints[0];
+        createOrActivateSession(firstEp);
+      }
     }
-  }, [endpoints]);
+  }, [endpoints, searchParams]);
 
   const createOrActivateSession = (ep: any) => {
     const epId = ep.id;
     if (!sessions[epId]) {
-      const isOnline = ep.status === "healthy" || ep.status === "online";
+      const isOnline = isEndpointOnline(ep);
       const newSession: EndpointSession = {
         endpointId: epId,
         hostname: ep.hostname || epId,

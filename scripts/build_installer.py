@@ -11,7 +11,7 @@ def build_executable():
     spec_path = root_dir / "sentinel_agent.spec"
     dist_dir = root_dir / "dist"
     build_dir = root_dir / "build"
-    setup_exe = dist_dir / "SentinelAgentSetup.exe"
+    setup_exe = dist_dir / "SentinelAgentSetup_NSSM.exe"
 
     print("==================================================")
     print("Building Endpoint Sentinel X Windows Agent Binary ")
@@ -22,6 +22,7 @@ def build_executable():
     # Terminate any running SentinelAgentSetup processes
     if os.name == "nt":
         try:
+            subprocess.run("taskkill /f /im SentinelAgentSetup_NSSM.exe", shell=True, capture_output=True)
             subprocess.run("taskkill /f /im SentinelAgentSetup.exe", shell=True, capture_output=True)
             time.sleep(1)
         except Exception:

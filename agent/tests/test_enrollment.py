@@ -12,7 +12,7 @@ async def test_enrollment_workflow_success(tmp_path):
     
     # Mock successful server registration response
     def mock_handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/endpoints/enroll"
+        assert request.url.path == "/api/v1/endpoints/enroll"
         return httpx.Response(
             201, 
             json={

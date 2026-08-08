@@ -294,12 +294,24 @@ def run_service_manager() -> None:
 
         # 4. Agent Daemon Foreground Run Mode
         if first_arg == "run":
+            if os.name == "nt":
+                try:
+                    import servicemanager
+                    from agent.services.service import SentinelAgentService
+                    servicemanager.Initialize()
+                    servicemanager.PrepareToHostSingle(SentinelAgentService)
+                    servicemanager.StartServiceCtrlDispatcher()
+                    return
+                except Exception:
+                    pass
+                    
             logger.info("Running Agent daemon in foreground loop...")
             try:
                 asyncio.run(async_service_start())
             except KeyboardInterrupt:
                 if _stop_event:
                     _stop_event.set()
+            
             return
 
         # 5. Windows SCM Actions (install, uninstall, start, stop)

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { EndpointSession } from "../types/consoleTypes";
 import { cn } from "../../../utils/cn";
+import { isEndpointOnline } from "../../endpoints/api/endpointsApi";
 
 interface ConsoleTopBarProps {
   endpoints: any[];
@@ -87,7 +88,7 @@ export const ConsoleTopBar: React.FC<ConsoleTopBarProps> = ({
                 ) : (
                   filteredEndpoints.map((ep) => {
                     const isSelected = activeSession?.endpointId === ep.id;
-                    const epOnline = ep.status === "healthy" || ep.status === "online";
+                    const epOnline = isEndpointOnline(ep);
 
                     return (
                       <button

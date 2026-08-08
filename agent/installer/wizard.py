@@ -11,7 +11,10 @@ import urllib.parse
 import urllib.request
 from tkinter import messagebox
 
-from agent.security.identity import get_hardware_identifiers
+import asyncio
+from pathlib import Path
+from agent.security.identity import get_hardware_identifiers, load_or_create_identity
+from agent.utils.storage import DPAPIJSONStorageProvider
 
 
 class SentinelEnrollmentWizard:
@@ -33,6 +36,11 @@ class SentinelEnrollmentWizard:
         self.status_var = tk.StringVar(value="Not Tested")
         self.status_color = "#8b949e"
 
+        # Detect Upgrade vs Fresh Install
+        prog_data = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
+        identity_file = os.path.join(prog_data, "EndpointSentinel", "identity.json")
+        self.is_upgrade = os.path.exists(identity_file)
+
         self._build_ui()
 
     def _build_ui(self):
@@ -49,9 +57,13 @@ class SentinelEnrollmentWizard:
         )
         title_label.pack(anchor="w")
 
+        subtitle_text = "Enterprise Endpoint Enrollment & Management Setup"
+        if self.is_upgrade:
+            subtitle_text = "Enterprise Endpoint Enrollment (Upgrade Mode)"
+
         subtitle_label = tk.Label(
             header_frame,
-            text="Enterprise Endpoint Enrollment & Management Setup",
+            text=subtitle_text,
             font=("Segoe UI", 9),
             fg="#8b949e",
             bg="#161b22",
@@ -229,7 +241,7 @@ class SentinelEnrollmentWizard:
 
         enroll_btn = tk.Button(
             footer_frame,
-            text="Enroll & Start Agent Service",
+            text="Upgrade & Restart Agent" if self.is_upgrade else "Enroll & Start Agent Service",
             font=("Segoe UI", 9, "bold"),
             bg="#238636",
             fg="#ffffff",
@@ -256,18 +268,19 @@ class SentinelEnrollmentWizard:
             )
             return
 
-        # Normalize URL: remove duplicate /api/v1 if user included it in base server URL
-        clean_base = raw_url
-        if clean_base.endswith("/api/v1"):
-            clean_base = clean_base[:-7].rstrip("/")
+        # Normalize URL: ensure it uses /api/v1 as the base API path
+        server_base = raw_url
+        if server_base.endswith("/api/v1"):
+            api_base = server_base
+        else:
+            api_base = f"{server_base}/api/v1"
 
         self.status_var.set("Testing...")
         self.status_label.configure(fg="#e3b341")
         self.root.update()
 
         candidate_urls = [
-            f"{clean_base}/health",
-            f"{clean_base}/agent/version",
+            f"{api_base}/openapi.json",
         ]
 
         last_error = None
@@ -276,10 +289,14 @@ class SentinelEnrollmentWizard:
             logger.info(f"Testing connectivity to URL: {health_url}")
 
             try:
+                # Bypass system proxy to prevent timeout issues on localhost/internal network
+                proxy_handler = urllib.request.ProxyHandler({})
+                opener = urllib.request.build_opener(proxy_handler)
+                
                 req = urllib.request.Request(
                     health_url, headers={"User-Agent": "SentinelAgentInstaller/0.9.0"}
                 )
-                with urllib.request.urlopen(req, timeout=30) as response:
+                with opener.open(req, timeout=30) as response:
                     status_code = response.status
                     body = response.read().decode("utf-8")
                     print(
@@ -290,9 +307,17 @@ class SentinelEnrollmentWizard:
                     )
 
                     if status_code in (200, 201):
-                        self.status_var.set("CONNECTED (HTTP 200 OK)")
-                        self.status_label.configure(fg="#3fb950")  # Green
-                        return
+                        try:
+                            data = json.loads(body)
+                            if "openapi" in data and "info" in data:
+                                title = data["info"].get("title", "Unknown")
+                                self.status_var.set(f"CONNECTED ({title})")
+                                self.status_label.configure(fg="#3fb950")  # Green
+                                return
+                            else:
+                                raise ValueError("Invalid OpenAPI schema structure.")
+                        except json.JSONDecodeError:
+                            raise ValueError("Response was not valid JSON.")
             except Exception as e:
                 import traceback
 
@@ -300,6 +325,15 @@ class SentinelEnrollmentWizard:
                 err_trace = traceback.format_exc()
                 print(f"[WIZARD TEST] Exception requesting {health_url}:\n{err_trace}")
                 logger.warning(f"Failed reachability check for {health_url}: {e}")
+                
+                # Temporary UI logging for diagnostics
+                messagebox.showerror(
+                    "Connectivity Diagnostic Log",
+                    f"URL: {health_url}\n"
+                    f"Method: GET\n"
+                    f"Timeout: 30s\n"
+                    f"Exception:\n{err_trace}"
+                )
 
         self.status_var.set(f"FAILED: {last_error}")
         self.status_label.configure(fg="#f85149")
@@ -319,13 +353,29 @@ class SentinelEnrollmentWizard:
 
         try:
             # Prepare registration POST
-            enroll_url = f"{server_url}/endpoints/enroll"
+            server_base = server_url
+            if server_base.endswith("/api/v1"):
+                api_base = server_base
+            else:
+                api_base = f"{server_base}/api/v1"
+                
+            enroll_url = f"{api_base}/endpoints/enroll"
 
+            # Identity Preservation / Upgrade Check
+            prog_data = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
+            agent_dir = os.path.join(prog_data, "EndpointSentinel")
+            os.makedirs(agent_dir, exist_ok=True)
+            
+            storage_provider = DPAPIJSONStorageProvider(Path(agent_dir))
+            identity = asyncio.run(load_or_create_identity(storage_provider))
+            
             ids = get_hardware_identifiers()
             payload = {
                 "hostname": hostname,
                 "os_version": f"{platform.system()} {platform.release()}",
-                "hardware_hash": ids.get("mac_address", "FINGERPRINT_DEFAULT"),
+                "agent_id": identity.agent_uuid,
+                "identity_version": getattr(identity, "identity_version", 1),
+                "hardware_hash": identity.machine_fingerprint,
                 "mac_addresses": [ids["mac_address"]] if ids.get("mac_address") else [],
                 "ip_addresses": [socket.gethostbyname(hostname)]
                 if hostname
@@ -352,26 +402,35 @@ class SentinelEnrollmentWizard:
                 )
 
             data = res_body.get("data", {})
-            agent_id = data.get("agent_id")
             access_token = data.get("access_token")
+            refresh_token = data.get("refresh_token", "")
 
-            # Persist configuration to ProgramData
-            prog_data = os.environ.get("PROGRAMDATA", "C:\\ProgramData")
-            agent_dir = os.path.join(prog_data, "EndpointSentinel")
-            os.makedirs(agent_dir, exist_ok=True)
-
+            # Persist configuration to ProgramData selectively
             cfg_file = os.path.join(agent_dir, "config.json")
-            config_data = {
+            config_data = {}
+            if os.path.exists(cfg_file):
+                try:
+                    with open(cfg_file, "r", encoding="utf-8") as f:
+                        config_data = json.load(f)
+                except Exception as e:
+                    logging.warning(f"Failed to read existing config.json: {e}")
+
+            config_data.update({
                 "server_url": server_url,
                 "enrollment_secret": token,
-                "agent_id": agent_id,
                 "department": department,
-                "access_token": access_token,
                 "installed_at": platform.node(),
-            }
+            })
 
             with open(cfg_file, "w", encoding="utf-8") as f:
                 json.dump(config_data, f, indent=2)
+                
+            # Also save tokens to DPAPI (handled correctly now)
+            tokens = {
+                "access_token": access_token,
+                "refresh_token": refresh_token
+            }
+            asyncio.run(storage_provider.write("tokens", tokens))
 
             # Deploy agent files and install Windows Service
             if os.name == "nt":
@@ -379,48 +438,83 @@ class SentinelEnrollmentWizard:
                     os.environ.get("ProgramFiles", "C:\\Program Files"),
                     "Endpoint Sentinel",
                 )
+                
+                if self.is_upgrade:
+                    import time
+                    import csv
+                    import io
+                    # Stop existing service to release file locks before deploying new executable
+                    subprocess.run(["sc.exe", "stop", "SentinelAgent"], capture_output=True)
+                    
+                    # Poll SCM until the service is fully STOPPED (timeout after 15 seconds)
+                    for _ in range(30):
+                        res = subprocess.run(["sc.exe", "query", "SentinelAgent"], capture_output=True, text=True)
+                        if "STOPPED" in res.stdout or "does not exist" in res.stdout:
+                            break
+                        time.sleep(0.5)
+                        
+                    # Wait for all processes to exit to release file locks (timeout after 15 seconds)
+                    remaining_pids = []
+                    for _ in range(30):
+                        remaining_pids = []
+                        res = subprocess.run(
+                            ["tasklist", "/FI", "IMAGENAME eq SentinelAgentService.exe", "/FO", "CSV", "/NH"],
+                            capture_output=True, text=True
+                        )
+                        output = res.stdout.strip()
+                        if "INFO: No tasks" in output or not output:
+                            break
+                        
+                        try:
+                            reader = csv.reader(io.StringIO(output))
+                            for row in reader:
+                                if len(row) > 1 and "SentinelAgentService.exe" in row[0]:
+                                    remaining_pids.append(row[1])
+                        except Exception:
+                            pass
+                            
+                        if not remaining_pids:
+                            break
+                        time.sleep(0.5)
+                        
+                    if remaining_pids:
+                        raise RuntimeError(
+                            f"Cannot upgrade agent. The following SentinelAgentService.exe processes failed to terminate: {', '.join(remaining_pids)}. "
+                            "Please terminate them manually before trying again."
+                        )
+                
                 self._deploy_agent_files(install_dir, agent_dir)
 
-                svc_exe = os.path.join(install_dir, "SentinelAgentService.exe")
-                subprocess.run(
-                    [
-                        "sc.exe",
-                        "create",
-                        "SentinelAgent",
-                        "binPath=",
-                        f'"{svc_exe}" run',
-                        "start=",
-                        "auto",
-                        "DisplayName=",
-                        "Endpoint Sentinel Agent",
-                    ],
-                    check=True,
-                )
-                subprocess.run(
-                    [
-                        "sc.exe",
-                        "failure",
-                        "SentinelAgent",
-                        "reset=",
-                        "86400",
-                        "actions=",
-                        "restart/60000/restart/120000/restart/300000",
-                    ],
-                    check=True,
-                )
-                subprocess.run(
-                    ["sc.exe", "start", "SentinelAgent"],
-                    check=True,
-                )
+                if not self.is_upgrade:
+                    svc_exe = os.path.join(install_dir, "SentinelAgentService.exe")
+                    subprocess.run(
+                        [
+                            "sc.exe", "create", "SentinelAgent", "binPath=", f'"{svc_exe}" run',
+                            "start=", "auto", "DisplayName=", "Endpoint Sentinel Agent",
+                        ],
+                        check=True,
+                    )
+                    subprocess.run(
+                        [
+                            "sc.exe", "failure", "SentinelAgent", "reset=", "86400",
+                            "actions=", "restart/60000/restart/120000/restart/300000",
+                        ],
+                        check=True,
+                    )
+                
+                subprocess.run(["sc.exe", "start", "SentinelAgent"], check=True)
 
+            success_title = "Upgrade Success" if self.is_upgrade else "Enrollment Success"
+            success_msg = f"Successfully upgraded agent and re-registered with Sentinel X Management Console!\n\nAssigned Agent ID: {identity.agent_uuid}" if self.is_upgrade else f"Successfully enrolled agent into Sentinel X Management Console!\n\nAssigned Agent ID: {identity.agent_uuid}"
             messagebox.showinfo(
-                "Enrollment Success",
-                f"Successfully enrolled agent into Sentinel X Management Console!\n\nAssigned Agent ID: {agent_id}",
+                success_title,
+                success_msg,
             )
             self.root.destroy()
         except Exception as e:
+            err_title = "Upgrade Error" if self.is_upgrade else "Enrollment Error"
             messagebox.showerror(
-                "Enrollment Error", f"Failed to complete enrollment:\n\n{e}"
+                err_title, f"Failed to complete operation:\n\n{e}"
             )
 
     def _deploy_agent_files(self, install_dir: str, config_dir: str) -> None:

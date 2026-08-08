@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   Monitor,
@@ -16,6 +16,7 @@ import {
 import { Badge } from "../../../../components/ui";
 import { apiClient } from "../../../../services/api";
 import type { OverviewDetails } from "../api/detailsApi";
+import { isEndpointOnline } from "../../api/endpointsApi";
 
 interface EndpointDetailsHeaderProps {
   overview?: OverviewDetails;
@@ -24,8 +25,9 @@ interface EndpointDetailsHeaderProps {
 export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
   overview,
 }: EndpointDetailsHeaderProps) {
+  const navigate = useNavigate();
   const hostname = overview?.hostname || "Endpoint Host";
-  const isOnline = overview?.is_online || false;
+  const isOnline = isEndpointOnline(overview);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -104,9 +106,22 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
         {/* Right Quick Actions Buttons */}
         <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
           <button
+            onClick={() => {
+              if (overview?.id) {
+                navigate(`/commands?endpointId=${overview.id}`);
+              }
+            }}
+            disabled={!overview?.id}
+            className="px-3 py-1.5 bg-primary text-on-primary rounded-md text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-xs disabled:opacity-50"
+          >
+            <Terminal className="h-3.5 w-3.5" />
+            <span>Open Console</span>
+          </button>
+
+          <button
             onClick={() => dispatchCommand("SYSTEM_INFO", "Run Command")}
             disabled={loadingAction === "Run Command" || !overview?.id}
-            className="px-3 py-1.5 bg-primary text-on-primary rounded-md text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity shadow-xs disabled:opacity-50"
+            className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-md text-xs font-bold flex items-center gap-1.5 border border-outline-variant/40 hover:bg-surface-container-highest transition-colors disabled:opacity-50"
           >
             {loadingAction === "Run Command" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
             <span>Run Command</span>

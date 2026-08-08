@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Card, Badge, EmptyState, LoadingSkeleton } from "../../../components/ui";
 import type { EndpointItem, PaginatedEndpointsData, EndpointsQueryParams } from "../api/endpointsApi";
+import { isEndpointOnline } from "../api/endpointsApi";
 
 interface EndpointsTableProps {
   data?: PaginatedEndpointsData;
@@ -119,7 +120,7 @@ export const EndpointsTable = React.memo(function EndpointsTable({
             </button>
 
             <button
-              onClick={() => { closeContextMenu(); navigate(`/commands`); }}
+              onClick={() => { closeContextMenu(); navigate(`/commands?endpointId=${contextMenu.endpoint.id}`); }}
               className="w-full text-left px-2.5 py-1.5 rounded hover:bg-surface-container-high text-on-surface flex items-center gap-2 font-medium"
             >
               <Terminal className="h-3.5 w-3.5 text-primary" /> Run Remote Command
@@ -209,7 +210,7 @@ export const EndpointsTable = React.memo(function EndpointsTable({
               <tbody className="divide-y divide-outline-variant/30 text-body-sm">
                 {items.map((ep) => {
                   const isSelected = selectedIds.includes(ep.id);
-                  const isOnline = ep.status.toLowerCase() === "online" || ep.is_online;
+                  const isOnline = isEndpointOnline(ep);
 
                   return (
                     <tr

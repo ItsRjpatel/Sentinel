@@ -14,6 +14,9 @@ class Endpoint(Base, BaseModelMixin):
     __tablename__ = "endpoints"
 
     hostname: Mapped[str] = mapped_column(String(255), nullable=False)
+    agent_id: Mapped[str] = mapped_column(String(36), unique=True, index=True, nullable=False)
+    identity_version: Mapped[int] = mapped_column(default=1, nullable=False)
+    identity_anomaly: Mapped[bool] = mapped_column(default=False, nullable=False)
     os_version: Mapped[str] = mapped_column(String(255), nullable=False)
     hardware_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     mac_addresses: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)

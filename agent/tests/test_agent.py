@@ -17,7 +17,7 @@ async def test_agent_bootstrap_and_execution(tmp_path, monkeypatch):
     
     def mock_handler(request: httpx.Request) -> httpx.Response:
         calls.append(request.url.path)
-        if request.url.path == "/endpoints/enroll":
+        if request.url.path == "/api/v1/endpoints/enroll":
             return httpx.Response(201, json={
                 "success": True,
                 "data": {
@@ -26,7 +26,7 @@ async def test_agent_bootstrap_and_execution(tmp_path, monkeypatch):
                     "refresh_token": "bootstrap-refresh-token"
                 }
             })
-        if request.url.path == "/endpoints/heartbeat":
+        if request.url.path == "/api/v1/endpoints/heartbeat":
             return httpx.Response(200, json={"success": True})
         return httpx.Response(404)
 
@@ -57,8 +57,8 @@ async def test_agent_bootstrap_and_execution(tmp_path, monkeypatch):
     assert container.scheduler is not None
     
     # Verify enrollment and heartbeat API paths were requested
-    assert "/endpoints/enroll" in calls
-    assert "/endpoints/heartbeat" in calls
+    assert "/api/v1/endpoints/enroll" in calls
+    assert "/api/v1/endpoints/heartbeat" in calls
     
     # Trigger SCM stop event
     from agent.main import _stop_event

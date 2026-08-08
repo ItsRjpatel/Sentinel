@@ -9,7 +9,7 @@ from agent.security.identity import load_or_create_identity, get_hardware_identi
 logger = logging.getLogger(__name__)
 
 
-def get_enrollment_payload(fingerprint: str) -> Dict[str, Any]:
+def get_enrollment_payload(identity: AgentIdentity) -> Dict[str, Any]:
     """Assembles OS and hardware identifiers for enrollment payload."""
     hostname = socket.gethostname()
     os_ver = f"{platform.system()} {platform.release()} (Build {platform.version()})"
@@ -26,7 +26,9 @@ def get_enrollment_payload(fingerprint: str) -> Dict[str, Any]:
     return {
         "hostname": hostname,
         "os_version": os_ver,
-        "hardware_hash": fingerprint,
+        "agent_id": identity.agent_uuid,
+        "hardware_hash": identity.machine_fingerprint,
+        "identity_version": identity.identity_version,
         "mac_addresses": macs,
         "ip_addresses": ips
     }
@@ -46,19 +48,17 @@ class EnrollmentManager:
         self.enrollment_secret = enrollment_secret
 
     async def is_enrolled(self) -> bool:
-        """Checks if the agent has a registered UUID saved in secure storage."""
-        identity = await load_or_create_identity(self.storage)
-        return identity.agent_uuid is not None
+        """Checks if the agent has valid session credentials saved in secure storage."""
+        tokens = await self.storage.read("tokens")
+        if not tokens:
+            return False
+        return bool(tokens.get("access_token") and tokens.get("refresh_token"))
 
     async def enroll(self) -> str:
         """Executes the registration POST and persists the returned credentials."""
         identity = await load_or_create_identity(self.storage)
-        if identity.agent_uuid:
-            logger.info(f"Agent already registered with UUID: {identity.agent_uuid}")
-            return identity.agent_uuid
-
-        logger.info("Initiating agent registration handshake...")
-        payload = get_enrollment_payload(identity.machine_fingerprint)
+        logger.info(f"Initiating agent registration handshake for {identity.agent_uuid}...")
+        payload = get_enrollment_payload(identity)
         
         headers = {}
         if self.enrollment_secret:
@@ -80,16 +80,11 @@ class EnrollmentManager:
             raise RuntimeError(f"Registration rejected: {res_data.get('message')}")
 
         data = res_data.get("data", {})
-        agent_id = data.get("agent_id")
         access_token = data.get("access_token")
         refresh_token = data.get("refresh_token")
 
-        if not agent_id or not access_token or not refresh_token:
+        if not access_token or not refresh_token:
             raise ValueError("Registration response missing required session credentials.")
-
-        # Update and save unique identity configurations
-        identity.agent_uuid = agent_id
-        await self.storage.write("identity", identity.to_dict())
 
         # Save tokens to secure DPAPI JSON storage
         tokens = {
@@ -98,5 +93,5 @@ class EnrollmentManager:
         }
         await self.storage.write("tokens", tokens)
 
-        logger.info(f"Enrollment successful. Assigned Agent UUID: {agent_id}")
-        return agent_id
+        logger.info(f"Enrollment successful. Assigned Agent UUID: {identity.agent_uuid}")
+        return identity.agent_uuid
