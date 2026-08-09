@@ -5,11 +5,10 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY backend/pyproject.toml ./
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install -e .
-
 COPY backend/ .
+
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -e .
 
 EXPOSE 8000
 
