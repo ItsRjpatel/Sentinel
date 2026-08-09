@@ -13,10 +13,12 @@ class NotificationBase(BaseModel):
 class NotificationCreate(NotificationBase):
     user_id: Optional[str] = None
 
+from uuid import UUID
+
 class NotificationResponse(NotificationBase):
-    id: str
+    id: UUID
     is_read: bool
-    user_id: Optional[str] = None
+    user_id: Optional[UUID] = None
     created_at: datetime
 
     class Config:

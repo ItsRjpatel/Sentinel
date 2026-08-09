@@ -72,6 +72,12 @@ def get_hardware_identifiers() -> Dict[str, str]:
     if not identifiers["bios_uuid"] or identifiers["bios_uuid"].lower() == "ffffffff-ffff-ffff-ffff-ffffffffffff":
         identifiers["bios_uuid"] = get_registry_machine_guid()
 
+    if not identifiers["cpu_id"]:
+        identifiers["cpu_id"] = "unknown-cpu-id"
+
+    if not identifiers["motherboard_serial"]:
+        identifiers["motherboard_serial"] = "unknown-motherboard-serial"
+
     if not identifiers["mac_address"]:
         fallback_node = uuid.getnode()
         identifiers["mac_address"] = ':'.join(

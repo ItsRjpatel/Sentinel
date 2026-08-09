@@ -184,7 +184,8 @@ export const fetchSecurity = async (id: string): Promise<SecurityDetails> => {
 };
 
 export const fetchPerformance = async (id: string, range: string): Promise<PerformanceDetails> => {
-  const res = await apiClient.get(`/endpoints/${id}/performance?range=${range}`);
+  const apiRange = range === "60s" ? "30m" : range;
+  const res = await apiClient.get(`/endpoints/${id}/performance?range=${apiRange}`);
   return res.data.data;
 };
 
@@ -267,14 +268,15 @@ export const useSecurity = (id: string) =>
     refetchInterval: 30000,
   });
 
-export const usePerformance = (id: string, range: string = "1h") =>
-  useQuery({
+export const usePerformance = (id: string, range: string = "1h") => {
+  return useQuery({
     queryKey: ["endpoint", id, "performance", range],
     queryFn: () => fetchPerformance(id, range),
     enabled: Boolean(id),
     staleTime: 15000,
     refetchInterval: 30000,
   });
+};
 
 export const useNetwork = (id: string) =>
   useQuery({

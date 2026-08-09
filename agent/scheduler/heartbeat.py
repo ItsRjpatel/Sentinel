@@ -31,15 +31,33 @@ class HeartbeatTask(ScheduledTask):
             logger.warning("Agent not enrolled. Heartbeat execution skipped.")
             return
 
+        import psutil
+        import socket
+        from agent.collectors.security.collector import SecurityCollector
+        
+        security_collector = SecurityCollector()
+        security_data = security_collector.collect().model_dump()
+        
+        # Gather active non-loopback IPs
+        try:
+            ips = socket.gethostbyname_ex(socket.gethostname())[2]
+            ips = [ip for ip in ips if ip not in ("127.0.0.1", "0.0.0.0")]
+        except Exception:
+            ips = []
+        
         payload = {
             "status": "healthy",
             "current_config_version": self.config_version,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "metrics": {
-                "cpu_usage_percent": 0.0,
-                "memory_free_bytes": 0,
-                "disk_free_bytes": 0
-            }
+                "cpu_usage_percent": psutil.cpu_percent(interval=None),
+                "memory_usage_percent": psutil.virtual_memory().percent,
+                "memory_free_bytes": psutil.virtual_memory().available,
+                "disk_usage_percent": psutil.disk_usage('/').percent,
+                "disk_free_bytes": psutil.disk_usage('/').free
+            },
+            "security": security_data,
+            "ip_addresses": ips
         }
 
         try:

@@ -21,7 +21,10 @@ async def setup_command_test_data(db_session: AsyncSession):
     db_session.add(user)
 
     # Create test endpoint
+    endpoint_id = uuid.uuid4()
     endpoint = Endpoint(
+        id=endpoint_id,
+        agent_id=str(uuid.uuid4()),
         hostname="test-cmd-result-ep",
         os_version="Windows 10",
         hardware_hash="dummy_hash_123",

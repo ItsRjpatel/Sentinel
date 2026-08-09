@@ -6,14 +6,14 @@ interface WebSocketContextType {
   lastEvent: any;
 }
 
-const CommandsWebSocketContext = createContext<WebSocketContextType>({
+const GlobalWebSocketContext = createContext<WebSocketContextType>({
   isConnected: false,
   lastEvent: null,
 });
 
-export const useCommandsWebSocket = () => useContext(CommandsWebSocketContext);
+export const useGlobalWebSocket = () => useContext(GlobalWebSocketContext);
 
-export const CommandsWebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GlobalWebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<any>(null);
   const queryClient = useQueryClient();
@@ -49,7 +49,13 @@ export const CommandsWebSocketProvider: React.FC<{ children: React.ReactNode }> 
           try {
             const parsed = JSON.parse(event.data);
             setLastEvent(parsed);
-            queryClient.invalidateQueries({ queryKey: ["commands"] });
+            if (parsed.event_type && parsed.event_type.startsWith("notification_")) {
+              queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            } else if (parsed.event_type && parsed.event_type.startsWith("alert_")) {
+              queryClient.invalidateQueries({ queryKey: ["alerts"] });
+            } else {
+              queryClient.invalidateQueries({ queryKey: ["commands"] });
+            }
           } catch {
             // ignore non-json messages (e.g. pong)
           }
@@ -84,8 +90,8 @@ export const CommandsWebSocketProvider: React.FC<{ children: React.ReactNode }> 
   }, [queryClient]);
 
   return (
-    <CommandsWebSocketContext.Provider value={{ isConnected, lastEvent }}>
+    <GlobalWebSocketContext.Provider value={{ isConnected, lastEvent }}>
       {children}
-    </CommandsWebSocketContext.Provider>
+    </GlobalWebSocketContext.Provider>
   );
 };

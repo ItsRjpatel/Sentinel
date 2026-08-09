@@ -5,7 +5,7 @@ import { CommandsToolbar } from "../components/CommandsToolbar";
 import { CommandsTable } from "../components/CommandsTable";
 import { CommandDetailsDrawer } from "../components/CommandDetailsDrawer";
 import { BulkCommandModal } from "../components/BulkCommandModal";
-import { CommandsWebSocketProvider } from "../providers/CommandsWebSocketProvider";
+import { GlobalWebSocketProvider } from "../../../contexts/GlobalWebSocketProvider";
 import { useCommandsList, useRetryCommand, useCancelCommand } from "../api/commandsApi";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "../../../services/api";
@@ -136,8 +136,8 @@ function CommandsPageContent() {
 
 export function CommandsPage() {
   return (
-    <CommandsWebSocketProvider>
+    <GlobalWebSocketProvider>
       <CommandsPageContent />
-    </CommandsWebSocketProvider>
+    </GlobalWebSocketProvider>
   );
 }

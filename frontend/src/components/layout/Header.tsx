@@ -3,7 +3,6 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import { apiClient } from "../../services/api";
 import {
   Search,
-  Bell,
   Sun,
   Moon,
   User,
@@ -11,11 +10,6 @@ import {
   ChevronRight,
   Settings,
   Command,
-  CheckCheck,
-  ShieldAlert,
-  Terminal,
-  Activity,
-  X,
   FileText,
   Users as UsersIcon,
 } from "lucide-react";
@@ -23,7 +17,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { cn } from "../../utils/cn";
 import { DropdownMenu } from "../ui/DropdownMenu";
-import { useNotificationsList, useMarkAllNotificationsRead } from "../../features/notifications/api/notificationsApi";
+import { NotificationBell } from "./NotificationBell";
 
 const routeTitles: Record<string, string> = {
   "/": "Dashboard",
@@ -50,19 +44,12 @@ export function Header() {
   const navigate = useNavigate();
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const notificationRef = useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  
-  const { data: notifications = [], isError } = useNotificationsList(false);
-  const markAllReadMutation = useMarkAllNotificationsRead();
-
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
   const currentTitle = routeTitles[location.pathname] || "Overview";
 
   // Ctrl+K / Cmd+K global keyboard shortcut listener
@@ -78,16 +65,7 @@ export function Header() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Close notifications popover on click outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
-        setIsNotificationOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
 
   // Debounced global search effect
   useEffect(() => {
@@ -114,9 +92,6 @@ export function Header() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const markAllNotificationsRead = () => {
-    markAllReadMutation.mutate();
-  };
 
   const userMenuItems = [
     {
@@ -226,118 +201,8 @@ export function Header() {
 
         {/* Right Section: Notifications, Theme Toggle, Settings, User Profile */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Notifications Popover */}
-          <div className="relative" ref={notificationRef}>
-            <button
-              onClick={() => setIsNotificationOpen((prev) => !prev)}
-              className="p-1.5 rounded-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors relative focus:outline-none"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface-container-low animate-pulse" />
-              )}
-            </button>
-
-            {/* Popover Dropdown */}
-            {isNotificationOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-surface-container-high border border-outline-variant rounded-xl shadow-2xl z-50 overflow-hidden space-y-0">
-                {/* Header */}
-                <div className="p-3 border-b border-outline-variant/50 flex items-center justify-between bg-surface-container-low">
-                  <div className="flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-bold text-on-surface">Notifications</span>
-                    {unreadCount > 0 && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-primary/15 text-primary">
-                        {unreadCount} new
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={markAllNotificationsRead}
-                        title="Mark all as read"
-                        className="p-1 text-on-surface-variant hover:text-primary transition-colors text-[10px] font-bold flex items-center gap-1"
-                      >
-                        <CheckCheck className="h-3.5 w-3.5" /> Read
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setIsNotificationOpen(false)}
-                      className="p-1 text-on-surface-variant hover:text-on-surface"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Notifications List */}
-                <div className="divide-y divide-outline-variant/30 max-h-72 overflow-y-auto">
-                  {isError ? (
-                    <div className="p-8 text-center text-on-surface-variant">
-                      <p className="text-xs font-bold text-error">Unable to load notifications</p>
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="p-8 text-center text-on-surface-variant">
-                      <Bell className="h-8 w-8 text-primary mx-auto mb-2 opacity-40" />
-                      <p className="text-xs font-bold text-on-surface">No notifications</p>
-                    </div>
-                  ) : (
-                    notifications.map((n: any) => {
-                      const Icon = n.category === "SECURITY" ? ShieldAlert : n.category === "COMMAND" ? Terminal : Activity;
-                      return (
-                        <button
-                          key={n.id}
-                          onClick={() => {
-                            setIsNotificationOpen(false);
-                            navigate(n.link || "/notifications");
-                          }}
-                          className={cn(
-                            "w-full text-left p-3 flex items-start gap-3 hover:bg-surface-container-highest transition-colors group cursor-pointer",
-                            !n.is_read ? "bg-surface-container-low/40" : ""
-                          )}
-                        >
-                          <div className={cn(
-                            "p-2 rounded-lg flex-shrink-0 mt-0.5",
-                            n.category === "SECURITY" ? "bg-error/10 text-error" : n.category === "COMMAND" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
-                          )}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1">
-                              <p className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate">
-                                {n.title}
-                              </p>
-                              <span className="text-[10px] text-on-surface-variant/70 flex-shrink-0">
-                                {new Date(n.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-on-surface-variant font-medium line-clamp-2 mt-0.5">
-                              {n.message}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-2 bg-surface-container-low border-t border-outline-variant/50 text-center">
-                  <button
-                    onClick={() => {
-                      setIsNotificationOpen(false);
-                      navigate("/notifications");
-                    }}
-                    className="text-xs font-extrabold text-primary hover:underline"
-                  >
-                    View All Notifications →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Notification Bell */}
+          <NotificationBell />
 
           {/* Theme Toggle */}
           <button

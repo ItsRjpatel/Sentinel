@@ -3,13 +3,14 @@ import { ShieldAlert } from "lucide-react";
 import { AlertsSummaryCards } from "../components/AlertsSummaryCards";
 import { AlertsToolbar } from "../components/AlertsToolbar";
 import { AlertDetailsDrawer } from "../components/AlertDetailsDrawer";
-// import {
-//   useAlertsList,
-//   useAcknowledgeAlert,
-//   useResolveAlert,
-//   useReopenAlert,
-//   useAssignAlert,
-// } from "../api/alertsApi";
+import { AlertsTable } from "../components/AlertsTable";
+import {
+  useAlertsList,
+  useAcknowledgeAlert,
+  useResolveAlert,
+  useReopenAlert,
+  useAssignAlert,
+} from "../api/alertsApi";
 
 export const AlertsPage = React.memo(function AlertsPage() {
   const [search, setSearch] = useState("");
@@ -17,10 +18,21 @@ export const AlertsPage = React.memo(function AlertsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
     const [selectedDetailsId, setSelectedDetailsId] = useState<string | null>(null);
 
-      const isFetching = false;
-  const refetch = () => {};
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
+  const { data, isFetching, refetch } = useAlertsList({
+    page,
+    page_size: pageSize,
+    severity: severityFilter,
+    status: statusFilter,
+    search,
+  });
 
+  const acknowledgeMutation = useAcknowledgeAlert();
+  const resolveMutation = useResolveAlert();
+  const reopenMutation = useReopenAlert();
+  const assignMutation = useAssignAlert();
   
   return (
     <div className="w-full space-y-4 px-2 sm:px-4 py-2">
@@ -55,15 +67,25 @@ export const AlertsPage = React.memo(function AlertsPage() {
       />
 
       {/* Enterprise Alerts Table */}
-      <div className="flex justify-center py-20">
-        <div className="text-center bg-surface-container border border-outline-variant/60 rounded-xl p-10 max-w-lg">
-          <ShieldAlert className="h-12 w-12 text-primary/40 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-on-surface mb-2">Feature Planned for Future Release</h2>
-          <p className="text-sm text-on-surface-variant">
-            The advanced Security Alerts Center is currently in development and will be available in an upcoming update.
-          </p>
-        </div>
-      </div>
+      <AlertsTable
+        items={data?.items || []}
+        total={data?.total || 0}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        isLoading={isFetching}
+        onViewDetails={(id) => setSelectedDetailsId(id)}
+        onAcknowledge={(id) => acknowledgeMutation.mutate(id)}
+        onResolve={(id) => resolveMutation.mutate({ id })}
+        onReopen={(id) => reopenMutation.mutate(id)}
+        onAssign={(id) => assignMutation.mutate({ id, analyst: "Me" })} // simplified for now
+        isMutating={
+          acknowledgeMutation.isPending ||
+          resolveMutation.isPending ||
+          reopenMutation.isPending ||
+          assignMutation.isPending
+        }
+      />
 
       {/* Drawer Overlay */}
       <AlertDetailsDrawer

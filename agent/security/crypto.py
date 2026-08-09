@@ -36,7 +36,7 @@ def _encrypt_dpapi(data: bytes, entropy: bytes = b"") -> bytes:
         )
         
     data_out = DATA_BLOB()
-    flags = 1  # CRYPTPROTECT_UI_FORBIDDEN (1) prevents UI prompts
+    flags = 1 | 4 # CRYPTPROTECT_UI_FORBIDDEN (1) | CRYPTPROTECT_LOCAL_MACHINE (4)
     
     success = crypt32.CryptProtectData(
         ctypes.byref(data_in),
@@ -79,7 +79,7 @@ def _decrypt_dpapi(encrypted_data: bytes, entropy: bytes = b"") -> bytes:
         )
         
     data_out = DATA_BLOB()
-    flags = 1  # CRYPTPROTECT_UI_FORBIDDEN (1)
+    flags = 1 | 4 # CRYPTPROTECT_UI_FORBIDDEN (1) | CRYPTPROTECT_LOCAL_MACHINE (4)
     
     success = crypt32.CryptUnprotectData(
         ctypes.byref(data_in),

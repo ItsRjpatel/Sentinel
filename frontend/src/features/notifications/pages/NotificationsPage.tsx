@@ -18,12 +18,14 @@ import {
   useSaveNotificationPreferences
 } from "../api/notificationsApi";
 import { Card, LoadingSkeleton } from "../../../components/ui";
+import { useNavigate } from "react-router-dom";
 
 export const NotificationsPage: React.FC = () => {
   const [tab, setTab] = useState<"ALL" | "UNREAD" | "PREFERENCES">("ALL");
   const { data: notifications = [], isLoading } = useNotificationsList(tab === "UNREAD");
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
+  const navigate = useNavigate();
 
   const { data: prefs } = useNotificationPreferences();
   const savePrefsMutation = useSaveNotificationPreferences();
@@ -188,7 +190,12 @@ export const NotificationsPage: React.FC = () => {
                 return (
                   <div
                     key={notif.id}
-                    className={`py-3.5 px-3 flex items-start justify-between gap-4 rounded-xl transition-colors ${
+                    onClick={() => {
+                      if (notif.link) {
+                        navigate(notif.link);
+                      }
+                    }}
+                    className={`py-3.5 px-3 flex items-start justify-between gap-4 rounded-xl transition-colors ${notif.link ? 'cursor-pointer hover:bg-surface-container-low' : ''} ${
                       !notif.is_read ? "bg-primary/5" : ""
                     }`}
                   >
@@ -219,7 +226,10 @@ export const NotificationsPage: React.FC = () => {
 
                     {!notif.is_read && (
                       <button
-                        onClick={() => markReadMutation.mutate(notif.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markReadMutation.mutate(notif.id);
+                        }}
                         className="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high text-on-surface text-[10px] font-bold rounded-lg border border-outline-variant/40 cursor-pointer"
                       >
                         Mark Read

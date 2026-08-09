@@ -33,6 +33,7 @@ async def test_endpoint(db_session):
     endpoint_id = uuid.uuid4()
     endpoint = Endpoint(
         id=endpoint_id,
+        agent_id=str(uuid.uuid4()),
         hostname="TEST-CMD-HOST",
         os_version="Windows 11",
         hardware_hash="fake-hash-cmd",

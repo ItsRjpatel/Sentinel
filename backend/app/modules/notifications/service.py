@@ -1,3 +1,5 @@
+from app.core.websocket.manager import connection_manager
+from app.core.websocket.schema import WebSocketEvent
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.notifications.repository import NotificationRepository
@@ -35,16 +37,25 @@ class NotificationService:
                 if pref.teams_enabled and pref.teams_webhook_url:
                     await NotificationChannelSender.send_teams(pref.teams_webhook_url, data.title, data.message)
 
+        from app.modules.notifications.schemas import NotificationResponse
+        payload = NotificationResponse.model_validate(created).model_dump(mode='json')
+        await connection_manager.broadcast(WebSocketEvent(event_type='notification_created', payload=payload))
         return created
 
     async def list_notifications(self, user_id: Optional[str] = None, unread_only: bool = False) -> List[Notification]:
         return await self.repo.list_notifications(user_id, unread_only)
 
     async def mark_as_read(self, notification_id: str) -> bool:
-        return await self.repo.mark_as_read(notification_id)
+        res = await self.repo.mark_as_read(notification_id)
+        if res:
+            await connection_manager.broadcast(WebSocketEvent(event_type='notification_read', payload={"id": notification_id}))
+        return res
 
     async def mark_all_read(self, user_id: Optional[str] = None) -> bool:
-        return await self.repo.mark_all_read(user_id)
+        res = await self.repo.mark_all_read(user_id)
+        if res:
+            await connection_manager.broadcast(WebSocketEvent(event_type='notification_all_read', payload={"user_id": user_id}))
+        return res
 
     async def get_preferences(self, user_id: str) -> NotificationPreferenceSchema:
         pref = await self.repo.get_preferences(user_id)

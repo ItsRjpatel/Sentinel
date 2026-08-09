@@ -67,3 +67,29 @@ logs/
 # Database
 *.db
 *.sqlite3
+
+# Agent Data and Test Data
+agent/data/
+test_data/
+scratch/
+backend/output.txt
+backend/verify_output.txt
+backend/verification_report_evidence.md
+
+# Temporary Scripts
+agent/e2e_actual_agent.py
+agent/e2e_duplicates_and_resolution.py
+agent/enroll_and_e2e.py
+agent/verify_high_memory.py
+agent/verify_network_roaming.py
+backend/clean_alerts.py
+backend/query_alerts.py
+backend/seed_alert_rules.py
+backend/test_notifications_500.py
+backend/update_inventory_tests.py
+backend/verify_alerts.py
+backend/verify_alerts_v2.py
+check_db.py
+restart_svc.py
+scratch/db_investigation.py
+

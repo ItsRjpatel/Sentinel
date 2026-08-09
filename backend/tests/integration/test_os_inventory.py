@@ -29,6 +29,7 @@ async def test_os_inventory_flow(client: AsyncClient, db_session):
     endpoint_id = uuid.uuid4()
     endpoint = Endpoint(
         id=endpoint_id,
+        agent_id=str(uuid.uuid4()),
         hostname="TEST-OS-HOST",
         os_version="Windows 11 (Build 22621)",
         hardware_hash="fake-hardware-hash-999",

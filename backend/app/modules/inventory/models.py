@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from sqlalchemy import String, Integer, BigInteger, Boolean, ForeignKey, Uuid
+from sqlalchemy import String, Integer, BigInteger, Boolean, ForeignKey, Uuid, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.common.models import BaseModelMixin
 from app.db.base import Base
@@ -70,6 +70,9 @@ class OperatingSystemInventory(Base, BaseModelMixin):
 class NetworkAdapterInventory(Base, BaseModelMixin):
     """Database model storing endpoint network adapter details."""
     __tablename__ = "network_adapter_inventory"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "interface_guid", name="uq_network_adapter_endpoint_guid"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -103,6 +106,9 @@ class NetworkAdapterInventory(Base, BaseModelMixin):
 class PhysicalDiskInventory(Base, BaseModelMixin):
     """Database model storing endpoint physical disk details."""
     __tablename__ = "physical_disk_inventory"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "serial_number", name="uq_physical_disk_endpoint_serial"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -134,6 +140,9 @@ class PhysicalDiskInventory(Base, BaseModelMixin):
 class LogicalVolumeInventory(Base, BaseModelMixin):
     """Database model storing logical volume partitions linked to physical disks."""
     __tablename__ = "logical_volume_inventory"
+    __table_args__ = (
+        UniqueConstraint("disk_id", "volume_guid", name="uq_logical_volume_disk_guid"),
+    )
 
     disk_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -161,6 +170,9 @@ class LogicalVolumeInventory(Base, BaseModelMixin):
 class SoftwareInventory(Base, BaseModelMixin):
     """Database model storing endpoint installed software application details."""
     __tablename__ = "software_inventory"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "application_name", "publisher", "version", name="uq_software_endpoint_app_pub_ver"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -191,6 +203,9 @@ class SoftwareInventory(Base, BaseModelMixin):
 class WindowsUpdateInventory(Base, BaseModelMixin):
     """Database model storing endpoint Windows Update history and installed patches."""
     __tablename__ = "windows_update_inventory"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "kb_number", name="uq_windows_update_endpoint_kb"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -223,6 +238,9 @@ class WindowsUpdateInventory(Base, BaseModelMixin):
 class WindowsServiceInventory(Base, BaseModelMixin):
     """Database model storing endpoint Windows Services information."""
     __tablename__ = "windows_service_inventory"
+    __table_args__ = (
+        UniqueConstraint("endpoint_id", "service_name", name="uq_windows_service_endpoint_name"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

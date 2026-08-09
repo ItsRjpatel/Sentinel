@@ -106,7 +106,7 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
           <button
             onClick={() => {
               if (overview?.id) {
-                navigate(`/commands?endpointId=${overview.id}`);
+                navigate(`/console?endpointId=${overview.id}`);
               }
             }}
             disabled={!overview?.id}
@@ -117,7 +117,7 @@ export const EndpointDetailsHeader = React.memo(function EndpointDetailsHeader({
           </button>
 
           <button
-            onClick={() => dispatchCommand("REQUEST_INVENTORY", "Refresh Inventory", { collect: "all" })}
+            onClick={() => dispatchCommand("RUN_INVENTORY", "Refresh Inventory", { collect: "all" })}
             disabled={loadingAction === "Refresh Inventory" || !overview?.id}
             className="px-3 py-1.5 bg-surface-container-high text-on-surface rounded-md text-xs font-bold flex items-center gap-1.5 border border-outline-variant/40 hover:bg-surface-container-highest transition-colors disabled:opacity-50"
           >

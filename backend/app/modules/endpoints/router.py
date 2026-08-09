@@ -50,6 +50,8 @@ class HeartbeatRequest(BaseModel):
     current_config_version: str
     timestamp: str
     metrics: dict
+    security: Optional[dict] = None
+    ip_addresses: Optional[List[str]] = None
 
 class HeartbeatData(BaseModel):
     config_revision: str
@@ -372,10 +374,38 @@ async def heartbeat(
     if not endpoint:
         raise HTTPException(status_code=401, detail="Enrolled endpoint not found.")
 
+    from app.core.websocket.manager import connection_manager
+    from app.core.websocket.schema import WebSocketEvent
+
+    time_diff = (datetime.now(timezone.utc) - endpoint.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+    was_offline = time_diff >= 180 or endpoint.status == "offline"
+
+    # Update dynamic networking information from roaming heartbeat
+    if data.ip_addresses is not None:
+        endpoint.ip_addresses = data.ip_addresses
+
     endpoint.last_seen = datetime.now(timezone.utc)
     endpoint.status = data.status
     endpoint.config_version = data.current_config_version
     await db.commit()
+
+    if was_offline:
+        await connection_manager.broadcast(WebSocketEvent(event_type='endpoint_online', payload={"endpoint_id": str(endpoint.id)}))
+
+    # Evaluate telemetry for alerts
+    from app.modules.alerts.service import AlertService
+    alert_service = AlertService(db)
+    await alert_service.evaluate_telemetry(endpoint, data.metrics, data.security)
+
+    # Broadcast performance update
+    metrics_payload = {
+        "endpoint_id": str(endpoint.id),
+        "cpu_usage_percent": data.metrics.get("cpu_usage_percent"),
+        "memory_usage_percent": data.metrics.get("memory_usage_percent"),
+        "disk_usage_percent": data.metrics.get("disk_usage_percent"),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await connection_manager.broadcast(WebSocketEvent(event_type='performance_updated', payload=metrics_payload))
 
     return SuccessResponse(
         message="Heartbeat accepted",
@@ -946,6 +976,7 @@ async def get_users(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ]
 
     return SuccessResponse(message="Local users loaded", data=users)
+
 
 
 @router.get("/endpoints/{endpoint_id}/timeline", response_model=SuccessResponse[List[TimelineEventItem]])
