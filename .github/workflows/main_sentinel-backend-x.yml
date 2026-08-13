@@ -34,7 +34,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_0BAC369DAD774BE8AC182ACA0537DD7F }}/itsrjpatel/sentinel:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/sentinel:${{ github.sha }}
           file: ./Dockerfile
 
   deploy:
@@ -60,5 +60,5 @@ jobs:
         with:
           app-name: 'sentinel-backend-x'
           slot-name: 'Production'
-          images: 'ghcr.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_0BAC369DAD774BE8AC182ACA0537DD7F }}/itsrjpatel/sentinel:${{ github.sha }}'
+          images: 'ghcr.io/${{ github.repository_owner }}/sentinel:${{ github.sha }}'
           
