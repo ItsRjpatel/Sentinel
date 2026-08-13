@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, UUID4
 from typing import Optional, List
 from datetime import datetime
 
+
 class UserItemResponse(BaseModel):
     id: UUID4
     username: str
@@ -16,11 +17,13 @@ class UserItemResponse(BaseModel):
     created_at: datetime
     roles: List[str] = []
 
+
 class PaginatedUsersResponse(BaseModel):
     items: List[UserItemResponse]
     total: int
     page: int
     size: int
+
 
 class UsersSummary(BaseModel):
     total: int
@@ -32,6 +35,7 @@ class UsersSummary(BaseModel):
     agents: int
     guests: int
 
+
 class UserCreateRequest(BaseModel):
     username: str
     email: EmailStr
@@ -41,14 +45,17 @@ class UserCreateRequest(BaseModel):
     phone: Optional[str] = None
     roles: List[str] = ["Analyst"]
 
+
 class UserUpdateRequest(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     phone: Optional[str] = None
 
+
 class PasswordResetRequest(BaseModel):
     new_password: str
+
 
 class UserRolesAssignRequest(BaseModel):
     roles: List[str]

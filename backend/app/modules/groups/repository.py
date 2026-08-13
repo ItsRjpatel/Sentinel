@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.groups.models import EndpointGroup, EndpointGroupMember
 from app.modules.endpoints.models import Endpoint
 
+
 class GroupRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -18,7 +19,9 @@ class GroupRepository:
 
     async def get_by_id(self, group_id: str) -> Optional[EndpointGroup]:
         result = await self.session.execute(
-            select(EndpointGroup).options(selectinload(EndpointGroup.members)).where(EndpointGroup.id == group_id)
+            select(EndpointGroup)
+            .options(selectinload(EndpointGroup.members))
+            .where(EndpointGroup.id == group_id)
         )
         return result.scalars().first()
 
@@ -42,19 +45,19 @@ class GroupRepository:
         await self.session.commit()
         return True
 
-    async def assign_endpoints(self, group_id: str, endpoint_ids: List[str], assigned_by: Optional[str] = None):
+    async def assign_endpoints(
+        self, group_id: str, endpoint_ids: List[str], assigned_by: Optional[str] = None
+    ):
         for ep_id in endpoint_ids:
             existing = await self.session.execute(
                 select(EndpointGroupMember).where(
                     EndpointGroupMember.group_id == group_id,
-                    EndpointGroupMember.endpoint_id == ep_id
+                    EndpointGroupMember.endpoint_id == ep_id,
                 )
             )
             if not existing.scalars().first():
                 member = EndpointGroupMember(
-                    group_id=group_id,
-                    endpoint_id=ep_id,
-                    assigned_by=assigned_by
+                    group_id=group_id, endpoint_id=ep_id, assigned_by=assigned_by
                 )
                 self.session.add(member)
         await self.session.commit()
@@ -63,7 +66,7 @@ class GroupRepository:
         await self.session.execute(
             delete(EndpointGroupMember).where(
                 EndpointGroupMember.group_id == group_id,
-                EndpointGroupMember.endpoint_id == endpoint_id
+                EndpointGroupMember.endpoint_id == endpoint_id,
             )
         )
         await self.session.commit()

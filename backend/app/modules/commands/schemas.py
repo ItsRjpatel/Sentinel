@@ -3,15 +3,19 @@ from typing import Optional, Any, Dict, List
 from datetime import datetime
 from app.modules.commands.enums import CommandStatus, CommandType
 
+
 class CommandCreate(BaseModel):
     endpoint_id: UUID4
     command_type: CommandType
     payload: Optional[Dict[str, Any]] = None
     created_by: Optional[str] = None
-    expires_in_seconds: Optional[int] = Field(default=3600, description="Seconds until command expires")
+    expires_in_seconds: Optional[int] = Field(
+        default=3600, description="Seconds until command expires"
+    )
     scheduled_at: Optional[datetime] = None
     recurring: Optional[str] = None
     timezone: Optional[str] = None
+
 
 class BulkCommandCreate(BaseModel):
     endpoint_ids: List[UUID4]
@@ -21,9 +25,11 @@ class BulkCommandCreate(BaseModel):
     scheduled_at: Optional[datetime] = None
     timezone: Optional[str] = None
 
+
 class BulkCommandResponse(BaseModel):
     queued_count: int
     command_ids: List[UUID4]
+
 
 class CommandResponse(BaseModel):
     id: UUID4
@@ -74,6 +80,7 @@ class CommandResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class CommandSummary(BaseModel):
     pending: int
     running: int
@@ -84,11 +91,13 @@ class CommandSummary(BaseModel):
     scheduled: int
     total: int
 
+
 class PaginatedCommandResponse(BaseModel):
     items: List[CommandResponse]
     total: int
     page: int
     size: int
+
 
 class CommandResultRequest(BaseModel):
     success: bool
@@ -96,15 +105,18 @@ class CommandResultRequest(BaseModel):
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
+
 class CommandResult(BaseModel):
     status: CommandStatus
     result: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
 
+
 class CommandStatusUpdate(BaseModel):
     status: CommandStatus
     result: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
+
 
 class CommandQueueResponse(BaseModel):
     command_id: UUID4

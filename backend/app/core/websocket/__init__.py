@@ -7,5 +7,5 @@ __all__ = [
     "connection_manager",
     "get_websocket_user",
     "WebSocketEvent",
-    "setup_websocket_bridge"
+    "setup_websocket_bridge",
 ]

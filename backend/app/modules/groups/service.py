@@ -2,14 +2,22 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.groups.repository import GroupRepository
 from app.modules.groups.models import EndpointGroup
-from app.modules.groups.schemas import GroupCreate, GroupUpdate, GroupStats, GroupResponse
+from app.modules.groups.schemas import (
+    GroupCreate,
+    GroupUpdate,
+    GroupStats,
+    GroupResponse,
+)
+
 
 class GroupService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.repo = GroupRepository(session)
 
-    async def create_group(self, data: GroupCreate, user_name: Optional[str] = None) -> GroupResponse:
+    async def create_group(
+        self, data: GroupCreate, user_name: Optional[str] = None
+    ) -> GroupResponse:
         group = EndpointGroup(
             name=data.name,
             description=data.description,
@@ -19,7 +27,7 @@ class GroupService:
             location=data.location,
             department=data.department,
             tags=data.tags,
-            created_by=user_name
+            created_by=user_name,
         )
         created = await self.repo.create(group)
         if data.endpoint_ids:
@@ -39,17 +47,26 @@ class GroupService:
             res.append(await self.to_group_response(g))
         return res
 
-    async def update_group(self, group_id: str, data: GroupUpdate) -> Optional[GroupResponse]:
+    async def update_group(
+        self, group_id: str, data: GroupUpdate
+    ) -> Optional[GroupResponse]:
         group = await self.repo.get_by_id(group_id)
         if not group:
             return None
-        if data.name is not None: group.name = data.name
-        if data.description is not None: group.description = data.description
-        if data.criteria is not None: group.criteria = data.criteria
-        if data.site is not None: group.site = data.site
-        if data.location is not None: group.location = data.location
-        if data.department is not None: group.department = data.department
-        if data.tags is not None: group.tags = data.tags
+        if data.name is not None:
+            group.name = data.name
+        if data.description is not None:
+            group.description = data.description
+        if data.criteria is not None:
+            group.criteria = data.criteria
+        if data.site is not None:
+            group.site = data.site
+        if data.location is not None:
+            group.location = data.location
+        if data.department is not None:
+            group.department = data.department
+        if data.tags is not None:
+            group.tags = data.tags
 
         updated = await self.repo.update(group)
         return await self.to_group_response(updated)
@@ -57,7 +74,9 @@ class GroupService:
     async def delete_group(self, group_id: str) -> bool:
         return await self.repo.delete(group_id)
 
-    async def assign_endpoints(self, group_id: str, endpoint_ids: List[str], user_name: Optional[str] = None):
+    async def assign_endpoints(
+        self, group_id: str, endpoint_ids: List[str], user_name: Optional[str] = None
+    ):
         await self.repo.assign_endpoints(group_id, endpoint_ids, user_name)
 
     async def remove_endpoint(self, group_id: str, endpoint_id: str):
@@ -69,7 +88,9 @@ class GroupService:
     async def to_group_response(self, group: EndpointGroup) -> GroupResponse:
         endpoints = await self.repo.get_group_endpoints(group.id)
         total = len(endpoints)
-        online = sum(1 for e in endpoints if getattr(e, "status", "") in ["healthy", "online"])
+        online = sum(
+            1 for e in endpoints if getattr(e, "status", "") in ["healthy", "online"]
+        )
         offline = total - online
         comp_percent = 100.0 if total == 0 else round((online / total) * 100.0, 1)
         health_percent = comp_percent
@@ -79,7 +100,7 @@ class GroupService:
             online_count=online,
             offline_count=offline,
             compliance_percent=comp_percent,
-            health_percent=health_percent
+            health_percent=health_percent,
         )
 
         return GroupResponse(
@@ -95,5 +116,5 @@ class GroupService:
             created_by=group.created_by,
             created_at=group.created_at,
             updated_at=group.updated_at,
-            stats=stats
+            stats=stats,
         )

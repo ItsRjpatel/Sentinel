@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CommandStatus(str, Enum):
     PENDING = "PENDING"
     SENT = "SENT"
@@ -9,6 +10,7 @@ class CommandStatus(str, Enum):
     TIMEOUT = "TIMEOUT"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
+
 
 class CommandType(str, Enum):
     PING = "PING"
@@ -24,4 +26,3 @@ class CommandType(str, Enum):
     GET_PROCESS_LIST = "GET_PROCESS_LIST"
     GET_SERVICE_LIST = "GET_SERVICE_LIST"
     CUSTOM_SCRIPT = "CUSTOM_SCRIPT"
-

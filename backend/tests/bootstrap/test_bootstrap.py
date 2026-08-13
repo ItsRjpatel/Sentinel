@@ -90,15 +90,17 @@ async def test_create_super_admin_fresh(mock_hash, MockRoleRepo, MockUserRepo):
 
     mock_user_repo_instance = MockUserRepo.return_value
     mock_role_repo_instance = MockRoleRepo.return_value
-    
+
     # Fresh DB
     created_user_mock = AsyncMock()
-    mock_user_repo_instance.get_by_username = AsyncMock(side_effect=[None, created_user_mock])
+    mock_user_repo_instance.get_by_username = AsyncMock(
+        side_effect=[None, created_user_mock]
+    )
     mock_user_repo_instance.create = AsyncMock(return_value=created_user_mock)
     mock_user_repo_instance.assign_role = AsyncMock()
-    
+
     mock_hash.return_value = "hashed_pw"
-    
+
     mock_super_admin_role = AsyncMock()
     mock_role_repo_instance.get_by_name = AsyncMock(return_value=mock_super_admin_role)
 
@@ -125,7 +127,7 @@ async def test_create_super_admin_idempotent(MockRoleRepo, MockUserRepo):
     mock_session = AsyncMock()
 
     mock_user_repo_instance = MockUserRepo.return_value
-    
+
     # Populated DB
     mock_user_repo_instance.get_by_username = AsyncMock(return_value=True)
     mock_user_repo_instance.create = AsyncMock()

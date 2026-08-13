@@ -69,22 +69,22 @@ def setup_exception_handlers(app: FastAPI) -> None:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        
+
         def sanitize_errors(errors):
             sanitized = []
             for err in errors:
                 new_err = dict(err)
-                if 'ctx' in new_err:
+                if "ctx" in new_err:
                     new_ctx = {}
-                    for k, v in new_err['ctx'].items():
+                    for k, v in new_err["ctx"].items():
                         if isinstance(v, bytes):
-                            new_ctx[k] = v.decode('utf-8', 'ignore')
+                            new_ctx[k] = v.decode("utf-8", "ignore")
                         else:
                             new_ctx[k] = v
-                    new_err['ctx'] = new_ctx
-                if 'input' in new_err:
-                    if isinstance(new_err['input'], bytes):
-                        new_err['input'] = new_err['input'].decode('utf-8', 'ignore')
+                    new_err["ctx"] = new_ctx
+                if "input" in new_err:
+                    if isinstance(new_err["input"], bytes):
+                        new_err["input"] = new_err["input"].decode("utf-8", "ignore")
                 sanitized.append(new_err)
             return sanitized
 
@@ -100,14 +100,16 @@ def setup_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: SentinelException
     ) -> JSONResponse:
         from app.common.schemas import ErrorResponse
-        
+
         status_code = 500
         error_code = "INTERNAL_ERROR"
-        
+
         if isinstance(exc, PermissionDeniedError):
             status_code = 403
             error_code = "FORBIDDEN"
-        elif isinstance(exc, (InvalidTokenError, ExpiredTokenError, AuthenticationError)):
+        elif isinstance(
+            exc, (InvalidTokenError, ExpiredTokenError, AuthenticationError)
+        ):
             status_code = 401
             error_code = "UNAUTHORIZED"
         elif isinstance(exc, InactiveUserError):
@@ -116,12 +118,8 @@ def setup_exception_handlers(app: FastAPI) -> None:
         elif isinstance(exc, AccountLockedError):
             status_code = 401
             error_code = "AUTH_ACCOUNT_LOCKED"
-            
-        error_resp = ErrorResponse(
-            error_code=error_code,
-            message=str(exc),
-            errors=[]
-        )
+
+        error_resp = ErrorResponse(error_code=error_code, message=str(exc), errors=[])
         logger.error(f"SentinelException on {request.url.path}: {str(exc)}")
         return JSONResponse(
             status_code=status_code,

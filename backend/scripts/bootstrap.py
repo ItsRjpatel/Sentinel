@@ -69,6 +69,35 @@ DEFAULT_ROLES = [
     "Viewer",
 ]
 
+ROLE_PERMISSIONS = {
+    "Security Analyst": [
+        "endpoints.read",
+        "inventory.read",
+        "monitoring.read",
+        "security.read",
+        "compliance.read",
+        "alerts.read",
+        "alerts.update",
+        "reports.read",
+        "auth.login",
+        "auth.logout",
+        "auth.refresh",
+    ],
+    "Operator": [
+        "endpoints.read",
+        "endpoints.update",
+        "inventory.read",
+        "monitoring.read",
+        "commands.execute",
+        "alerts.read",
+        "alerts.update",
+        "reports.read",
+        "auth.login",
+        "auth.logout",
+        "auth.refresh",
+    ],
+}
+
 
 async def bootstrap_permissions(permission_repo: PermissionRepository, session):
     logger.info("Bootstrapping permissions...")
@@ -108,6 +137,22 @@ async def bootstrap_roles(
     await session.commit()
 
 
+async def sync_role_permissions(
+    role_repo: RoleRepository, permission_repo: PermissionRepository, session
+):
+    logger.info("Synchronizing specific role permissions...")
+    for role_name, perms in ROLE_PERMISSIONS.items():
+        role = await role_repo.get_by_name(role_name)
+        if role:
+            # Additive approach: assign_permission handles deduplication
+            for p_name in perms:
+                perm = await permission_repo.get_by_name(p_name)
+                if perm:
+                    await role_repo.assign_permission(role, perm)
+            logger.info(f"Synchronized permissions for {role_name}")
+    await session.commit()
+
+
 async def main():
     logger.info("Starting Bootstrap Process...")
     async with async_session_maker() as session:
@@ -120,7 +165,10 @@ async def main():
         # 2. Create Roles
         await bootstrap_roles(role_repo, permission_repo, session)
 
-        # 3. Create Super Admin
+        # 3. Synchronize Specific Role Permissions
+        await sync_role_permissions(role_repo, permission_repo, session)
+
+        # 4. Create Super Admin
         await create_super_admin(session)
 
     logger.info("Bootstrap complete.")

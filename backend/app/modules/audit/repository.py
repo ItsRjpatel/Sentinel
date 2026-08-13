@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.audit.models import AuditLog
 from datetime import datetime, timezone
 
+
 class AuditRepository:
     def __init__(self, db: AsyncSession):
         self.db = db

@@ -7,24 +7,25 @@ from app.modules.endpoints.models import Endpoint
 from app.modules.inventory.models import PhysicalDiskInventory, LogicalVolumeInventory
 from app.modules.auth.models import User
 
+
 @pytest.mark.asyncio
 async def test_storage_inventory_flow(client: AsyncClient, db_session):
     # 1. Fetch or create a dummy admin user
     stmt = select(User).where(User.username == "admin")
     res = await db_session.execute(stmt)
     admin = res.scalar_one_or_none()
-    
+
     if not admin:
         admin = User(
             username="admin",
             email="admin_storage_test@example.com",
             password_hash="fake-hash",
             is_active=True,
-            is_verified=True
+            is_verified=True,
         )
         db_session.add(admin)
         await db_session.commit()
-    
+
     # 2. Create a dummy endpoint record
     endpoint_id = uuid.uuid4()
     endpoint = Endpoint(
@@ -33,23 +34,21 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
         hostname="TEST-STORAGE-HOST",
         os_version="Windows 11",
         hardware_hash="fake-hardware-hash-777",
-        status="healthy"
+        status="healthy",
     )
     db_session.add(endpoint)
     await db_session.commit()
 
     # 3. Generate access token representing this endpoint
     token = create_access_token(
-        subject=str(endpoint_id),
-        username="TEST-STORAGE-HOST",
-        roles=[]
+        subject=str(endpoint_id), username="TEST-STORAGE-HOST", roles=[]
     )
     auth_headers = {"Authorization": f"Bearer {token}"}
 
     # 4. Initial storage payload
     vol_guid_1 = str(uuid.uuid4())
     vol_guid_2 = str(uuid.uuid4())
-    
+
     payload = [
         {
             "disk_number": 0,
@@ -83,7 +82,7 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
                     "volume_type": "Local Disk",
                     "is_boot_volume": True,
                     "is_system_volume": True,
-                    "shadow_copy_support": True
+                    "shadow_copy_support": True,
                 },
                 {
                     "drive_letter": "D:",
@@ -99,17 +98,15 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
                     "volume_type": "Local Disk",
                     "is_boot_volume": False,
                     "is_system_volume": False,
-                    "shadow_copy_support": False
-                }
-            ]
+                    "shadow_copy_support": False,
+                },
+            ],
         }
     ]
 
     # POST to storage route
     post_resp = await client.post(
-        "/api/v1/inventory/storage",
-        json=payload,
-        headers=auth_headers
+        "/api/v1/inventory/storage", json=payload, headers=auth_headers
     )
     assert post_resp.status_code == 200
     res_data = post_resp.json()
@@ -118,13 +115,17 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
     assert len(res_data["data"][0]["volumes"]) == 2
 
     # Verify database directly
-    stmt = select(PhysicalDiskInventory).where(PhysicalDiskInventory.endpoint_id == endpoint_id)
+    stmt = select(PhysicalDiskInventory).where(
+        PhysicalDiskInventory.endpoint_id == endpoint_id
+    )
     db_res = await db_session.execute(stmt)
     db_records = db_res.scalars().all()
     assert len(db_records) == 1
     disk_id = db_records[0].id
-    
-    stmt_vol = select(LogicalVolumeInventory).where(LogicalVolumeInventory.disk_id == disk_id)
+
+    stmt_vol = select(LogicalVolumeInventory).where(
+        LogicalVolumeInventory.disk_id == disk_id
+    )
     db_res_vol = await db_session.execute(stmt_vol)
     db_vols = db_res_vol.scalars().all()
     assert len(db_vols) == 2
@@ -142,7 +143,7 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
             "media_type": "SSD",
             "bus_type": "NVMe",
             "interface_type": "SCSI",
-            "size_bytes": 600000000000, # Updated size
+            "size_bytes": 600000000000,  # Updated size
             "partition_count": 3,
             "health_status": "Healthy",
             "operational_status": "Online",
@@ -159,14 +160,14 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
                     "file_system": "NTFS",
                     "label": "Windows",
                     "capacity_bytes": 499000000000,
-                    "free_space_bytes": 50000000000, # Updated free space
+                    "free_space_bytes": 50000000000,  # Updated free space
                     "used_space_bytes": 449000000000,
                     "compression_enabled": False,
                     "bitlocker_status": "Fully Encrypted",
                     "volume_type": "Local Disk",
                     "is_boot_volume": True,
                     "is_system_volume": True,
-                    "shadow_copy_support": True
+                    "shadow_copy_support": True,
                 },
                 {
                     # New volume E
@@ -183,9 +184,9 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
                     "volume_type": "Local Disk",
                     "is_boot_volume": False,
                     "is_system_volume": False,
-                    "shadow_copy_support": False
-                }
-            ]
+                    "shadow_copy_support": False,
+                },
+            ],
         },
         {
             # New Disk (USB)
@@ -205,35 +206,31 @@ async def test_storage_inventory_flow(client: AsyncClient, db_session):
             "is_system_disk": False,
             "is_removable": True,
             "is_virtual": False,
-            "volumes": []
-        }
+            "volumes": [],
+        },
     ]
 
     post_rec = await client.post(
-        "/api/v1/inventory/storage",
-        json=payload_reconcile,
-        headers=auth_headers
+        "/api/v1/inventory/storage", json=payload_reconcile, headers=auth_headers
     )
     assert post_rec.status_code == 200
 
     # Verify reconciliation in DB
-    stmt_rec = select(PhysicalDiskInventory).where(PhysicalDiskInventory.endpoint_id == endpoint_id)
+    stmt_rec = select(PhysicalDiskInventory).where(
+        PhysicalDiskInventory.endpoint_id == endpoint_id
+    )
     db_res_rec = await db_session.execute(stmt_rec)
     db_records_rec = db_res_rec.scalars().all()
     assert len(db_records_rec) == 2
-    
+
     # 6. GET self storage inventory
-    get_resp = await client.get(
-        "/api/v1/inventory/storage",
-        headers=auth_headers
-    )
+    get_resp = await client.get("/api/v1/inventory/storage", headers=auth_headers)
     assert get_resp.status_code == 200
     assert len(get_resp.json()["data"]) == 2
 
     # 7. GET other endpoint storage inventory by ID
     get_by_id_resp = await client.get(
-        f"/api/v1/inventory/storage/{endpoint_id}",
-        headers=auth_headers
+        f"/api/v1/inventory/storage/{endpoint_id}", headers=auth_headers
     )
     assert get_by_id_resp.status_code == 200
     assert len(get_by_id_resp.json()["data"]) == 2

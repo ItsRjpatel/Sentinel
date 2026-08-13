@@ -16,10 +16,12 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 # --- Schemas ---
 
+
 class ComplianceItem(BaseModel):
     label: str
     percentage: float
     colorClass: str
+
 
 class StatusBreakdown(BaseModel):
     total: int
@@ -30,9 +32,11 @@ class StatusBreakdown(BaseModel):
     critical: int = 0
     unknown: int = 0
 
+
 class PerformanceAnalytics(BaseModel):
     fleet_average: float
     peak_demand: float
+
 
 class ExecutiveKpiData(BaseModel):
     total_endpoints: int
@@ -54,6 +58,7 @@ class ExecutiveKpiData(BaseModel):
     compliance_overview: List[ComplianceItem]
     performance_analytics: PerformanceAnalytics
 
+
 class FleetHealthData(BaseModel):
     online: int
     offline: int
@@ -67,6 +72,7 @@ class FleetHealthData(BaseModel):
     unknown: int
     total: int
 
+
 class ThreatDistributionData(BaseModel):
     critical: int
     high: int
@@ -75,14 +81,17 @@ class ThreatDistributionData(BaseModel):
     info: int
     total_threats: int
 
+
 class OsDistributionItem(BaseModel):
     name: str
     count: int
     percentage: float
 
+
 class TelemetryPoint(BaseModel):
     time: str
     value: float
+
 
 class PerformanceTelemetryData(BaseModel):
     cpu_history: List[TelemetryPoint]
@@ -91,6 +100,7 @@ class PerformanceTelemetryData(BaseModel):
     network_history: List[TelemetryPoint]
     fleet_average: float
     peak_demand: float
+
 
 class TopConsumerItem(BaseModel):
     hostname: str
@@ -102,6 +112,7 @@ class TopConsumerItem(BaseModel):
     agent_version: str
     last_seen: str
 
+
 class AgentActivityItem(BaseModel):
     id: str
     activity_type: str
@@ -110,6 +121,7 @@ class AgentActivityItem(BaseModel):
     timestamp: str
     details: str
     status: str
+
 
 class SystemServiceHealth(BaseModel):
     service: str
@@ -121,22 +133,27 @@ class SystemServiceHealth(BaseModel):
 
 # --- Endpoints ---
 
+
 @router.get("/summary", response_model=SuccessResponse[ExecutiveKpiData])
 async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
     """1. Executive KPIs and core summary metrics."""
     ep_res = await db.execute(select(Endpoint))
     endpoints = ep_res.scalars().all()
-    
+
     total_endpoints = len(endpoints)
     now = datetime.now(timezone.utc)
-    
+
     online_count = 0
     healthy_count = 0
     offline_count = 0
     warning_count = 0
-    
+
     for ep in endpoints:
-        time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+        time_diff = (
+            (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+            if ep.last_seen
+            else 9999
+        )
         if time_diff < 180 and ep.status != "offline":
             online_count += 1
             if ep.status == "healthy":
@@ -147,17 +164,23 @@ async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
             offline_count += 1
 
     crit_alert_res = await db.execute(
-        select(func.count(Alert.id)).where(Alert.severity == "Critical", Alert.status == "active")
+        select(func.count(Alert.id)).where(
+            Alert.severity == "Critical", Alert.status == "active"
+        )
     )
     critical_alerts = crit_alert_res.scalar() or 0
 
     warn_alert_res = await db.execute(
-        select(func.count(Alert.id)).where(Alert.severity.in_(["High", "Medium"]), Alert.status == "active")
+        select(func.count(Alert.id)).where(
+            Alert.severity.in_(["High", "Medium"]), Alert.status == "active"
+        )
     )
     warning_alerts = warn_alert_res.scalar() or 0
 
     cmd_res = await db.execute(
-        select(func.count(Command.id)).where(Command.status.in_(["pending", "running", "PENDING", "RUNNING"]))
+        select(func.count(Command.id)).where(
+            Command.status.in_(["pending", "running", "PENDING", "RUNNING"])
+        )
     )
     running_commands = cmd_res.scalar() or 0
 
@@ -186,17 +209,24 @@ async def get_dashboard_summary(db: AsyncSession = Depends(get_db)):
             offline=offline_count,
             warning=warning_count,
             critical=critical_alerts,
-            unknown=0
+            unknown=0,
         ),
         compliance_overview=[
-          {"label": "OS Patching", "percentage": 94.0, "colorClass": "bg-primary"},
-          {"label": "Antivirus Definitions", "percentage": 99.0, "colorClass": "bg-primary"},
-          {"label": "Disk Encryption", "percentage": 82.0, "colorClass": "bg-tertiary"},
+            {"label": "OS Patching", "percentage": 94.0, "colorClass": "bg-primary"},
+            {
+                "label": "Antivirus Definitions",
+                "percentage": 99.0,
+                "colorClass": "bg-primary",
+            },
+            {
+                "label": "Disk Encryption",
+                "percentage": 82.0,
+                "colorClass": "bg-tertiary",
+            },
         ],
         performance_analytics=PerformanceAnalytics(
-            fleet_average=34.0,
-            peak_demand=68.0
-        )
+            fleet_average=34.0, peak_demand=68.0
+        ),
     )
 
     return SuccessResponse(message="Dashboard summary retrieved", data=data)
@@ -207,7 +237,7 @@ async def get_fleet_health(db: AsyncSession = Depends(get_db)):
     """2. Fleet Health status breakdown."""
     ep_res = await db.execute(select(Endpoint))
     endpoints = ep_res.scalars().all()
-    
+
     now = datetime.now(timezone.utc)
     online = 0
     offline = 0
@@ -219,9 +249,13 @@ async def get_fleet_health(db: AsyncSession = Depends(get_db)):
     warning = 0
     critical = 0
     unknown = 0
-    
+
     for ep in endpoints:
-        time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+        time_diff = (
+            (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+            if ep.last_seen
+            else 9999
+        )
         if time_diff < 180 and ep.status != "offline":
             online += 1
             if ep.status == "healthy":
@@ -254,19 +288,21 @@ async def get_fleet_health(db: AsyncSession = Depends(get_db)):
             warning=warning,
             critical=critical,
             unknown=unknown,
-            total=len(endpoints)
-        )
+            total=len(endpoints),
+        ),
     )
 
 
-@router.get("/threat-distribution", response_model=SuccessResponse[ThreatDistributionData])
+@router.get(
+    "/threat-distribution", response_model=SuccessResponse[ThreatDistributionData]
+)
 async def get_threat_distribution(db: AsyncSession = Depends(get_db)):
     """3. Threat Severity Distribution counts."""
     res = await db.execute(
         select(Alert.severity, func.count(Alert.id)).group_by(Alert.severity)
     )
     counts = {row[0].capitalize(): row[1] for row in res.all()}
-    
+
     crit = counts.get("Critical", 0)
     high = counts.get("High", 0)
     med = counts.get("Medium", 0)
@@ -282,17 +318,19 @@ async def get_threat_distribution(db: AsyncSession = Depends(get_db)):
             medium=med,
             low=low,
             info=info,
-            total_threats=total
-        )
+            total_threats=total,
+        ),
     )
 
 
-@router.get("/os-distribution", response_model=SuccessResponse[List[OsDistributionItem]])
+@router.get(
+    "/os-distribution", response_model=SuccessResponse[List[OsDistributionItem]]
+)
 async def get_os_distribution(db: AsyncSession = Depends(get_db)):
     """4. Operating System Distribution breakdown."""
     ep_res = await db.execute(select(Endpoint))
     endpoints = ep_res.scalars().all()
-    
+
     counts: Dict[str, int] = {
         "Windows 11": 0,
         "Windows 10": 0,
@@ -301,7 +339,7 @@ async def get_os_distribution(db: AsyncSession = Depends(get_db)):
         "Linux": 0,
         "macOS": 0,
     }
-    
+
     total = len(endpoints)
     for ep in endpoints:
         os_str = ep.os_version or ""
@@ -324,7 +362,7 @@ async def get_os_distribution(db: AsyncSession = Depends(get_db)):
         OsDistributionItem(
             name=name,
             count=count,
-            percentage=round((count / total * 100), 1) if total > 0 else 0.0
+            percentage=round((count / total * 100), 1) if total > 0 else 0.0,
         )
         for name, count in counts.items()
     ]
@@ -335,11 +373,11 @@ async def get_os_distribution(db: AsyncSession = Depends(get_db)):
 @router.get("/performance", response_model=SuccessResponse[PerformanceTelemetryData])
 async def get_performance_telemetry(
     time_range: str = Query("1h", description="30m, 1h, 6h, 24h"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """5. Performance Telemetry History for CPU, Memory, Disk, Network."""
     now = datetime.now(timezone.utc)
-    
+
     # Calculate interval steps
     if time_range == "30m":
         steps = 6
@@ -350,7 +388,7 @@ async def get_performance_telemetry(
     elif time_range == "24h":
         steps = 8
         step_minutes = 180
-    else: # default 1h
+    else:  # default 1h
         steps = 6
         step_minutes = 10
 
@@ -363,8 +401,8 @@ async def get_performance_telemetry(
     base_t = int(now.timestamp())
     for i in range(steps - 1, -1, -1):
         pt_time = (now - timedelta(minutes=i * step_minutes)).strftime("%H:%M")
-        seed_idx = (base_t // (step_minutes * 60) - i)
-        
+        seed_idx = base_t // (step_minutes * 60) - i
+
         cpu_val = round(28.0 + (seed_idx * 7) % 35, 1)
         mem_val = round(52.0 + (seed_idx * 3) % 25, 1)
         disk_val = round(44.0 + (seed_idx * 2) % 15, 1)
@@ -383,8 +421,8 @@ async def get_performance_telemetry(
             disk_history=disk_pts,
             network_history=net_pts,
             fleet_average=38.5,
-            peak_demand=72.0
-        )
+            peak_demand=72.0,
+        ),
     )
 
 
@@ -393,13 +431,17 @@ async def get_top_consumers(db: AsyncSession = Depends(get_db)):
     """6. Top 5 Resource-Consuming Endpoints."""
     ep_res = await db.execute(select(Endpoint).limit(5))
     endpoints = ep_res.scalars().all()
-    
+
     now = datetime.now(timezone.utc)
     items = []
     for idx, ep in enumerate(endpoints):
-        time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+        time_diff = (
+            (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+            if ep.last_seen
+            else 9999
+        )
         is_online = time_diff < 180 and ep.status != "offline"
-        
+
         cpu = round(88.5 - idx * 12.0, 1)
         mem = round(84.0 - idx * 8.5, 1)
         disk = round(79.0 - idx * 6.0, 1)
@@ -413,7 +455,9 @@ async def get_top_consumers(db: AsyncSession = Depends(get_db)):
                 status=ep.status,
                 os=ep.os_version,
                 agent_version=ep.config_version,
-                last_seen=ep.last_seen.strftime("%H:%M:%S UTC") if ep.last_seen else "N/A"
+                last_seen=(
+                    ep.last_seen.strftime("%H:%M:%S UTC") if ep.last_seen else "N/A"
+                ),
             )
         )
 
@@ -425,52 +469,70 @@ async def get_agent_activities(db: AsyncSession = Depends(get_db)):
     """7. Latest Agent Activity Timeline (Merged from real commands, alerts, & endpoint events)."""
     activities = []
     now = datetime.now(timezone.utc)
-    
+
     # 1. Fetch recent alerts
-    alert_res = await db.execute(select(Alert).order_by(Alert.created_at.desc()).limit(5))
+    alert_res = await db.execute(
+        select(Alert).order_by(Alert.created_at.desc()).limit(5)
+    )
     for a in alert_res.scalars().all():
-        activities.append({
-            "id": f"alert-{a.id}",
-            "activity_type": "Alert Triggered",
-            "title": a.title,
-            "endpoint_name": a.endpoint_name or "System",
-            "timestamp_dt": a.created_at,
-            "timestamp": a.created_at.strftime("%H:%M:%S UTC"),
-            "details": a.description[:60] + "..." if len(a.description) > 60 else a.description,
-            "status": "warning" if a.severity in ["High", "Medium"] else "critical"
-        })
+        activities.append(
+            {
+                "id": f"alert-{a.id}",
+                "activity_type": "Alert Triggered",
+                "title": a.title,
+                "endpoint_name": a.endpoint_name or "System",
+                "timestamp_dt": a.created_at,
+                "timestamp": a.created_at.strftime("%H:%M:%S UTC"),
+                "details": (
+                    a.description[:60] + "..."
+                    if len(a.description) > 60
+                    else a.description
+                ),
+                "status": "warning" if a.severity in ["High", "Medium"] else "critical",
+            }
+        )
 
     # 2. Fetch recent commands
-    cmd_res = await db.execute(select(Command).order_by(Command.created_at.desc()).limit(5))
+    cmd_res = await db.execute(
+        select(Command).order_by(Command.created_at.desc()).limit(5)
+    )
     for c in cmd_res.scalars().all():
-        activities.append({
-            "id": f"cmd-{c.id}",
-            "activity_type": "Command Executed",
-            "title": f"Command {c.command_type}",
-            "endpoint_name": str(c.endpoint_id)[:8],
-            "timestamp_dt": c.created_at,
-            "timestamp": c.created_at.strftime("%H:%M:%S UTC"),
-            "details": f"Status: {c.status} by {c.created_by or 'System'}",
-            "status": "success" if c.status == "SUCCESS" else "info"
-        })
+        activities.append(
+            {
+                "id": f"cmd-{c.id}",
+                "activity_type": "Command Executed",
+                "title": f"Command {c.command_type}",
+                "endpoint_name": str(c.endpoint_id)[:8],
+                "timestamp_dt": c.created_at,
+                "timestamp": c.created_at.strftime("%H:%M:%S UTC"),
+                "details": f"Status: {c.status} by {c.created_by or 'System'}",
+                "status": "success" if c.status == "SUCCESS" else "info",
+            }
+        )
 
     # 3. Fetch recent endpoints for agent connection
-    ep_res = await db.execute(select(Endpoint).order_by(Endpoint.last_seen.desc()).limit(5))
+    ep_res = await db.execute(
+        select(Endpoint).order_by(Endpoint.last_seen.desc()).limit(5)
+    )
     for ep in ep_res.scalars().all():
-        activities.append({
-            "id": f"ep-{ep.id}",
-            "activity_type": "Heartbeat Received",
-            "title": f"Agent Heartbeat: {ep.hostname}",
-            "endpoint_name": ep.hostname,
-            "timestamp_dt": ep.last_seen,
-            "timestamp": ep.last_seen.strftime("%H:%M:%S UTC") if ep.last_seen else "N/A",
-            "details": f"Agent v{ep.config_version} reported healthy status",
-            "status": "success"
-        })
+        activities.append(
+            {
+                "id": f"ep-{ep.id}",
+                "activity_type": "Heartbeat Received",
+                "title": f"Agent Heartbeat: {ep.hostname}",
+                "endpoint_name": ep.hostname,
+                "timestamp_dt": ep.last_seen,
+                "timestamp": (
+                    ep.last_seen.strftime("%H:%M:%S UTC") if ep.last_seen else "N/A"
+                ),
+                "details": f"Agent v{ep.config_version} reported healthy status",
+                "status": "success",
+            }
+        )
 
     # Sort activities newest first and take top 10
     activities.sort(key=lambda x: x["timestamp_dt"], reverse=True)
-    
+
     items = [
         AgentActivityItem(
             id=act["id"],
@@ -479,7 +541,7 @@ async def get_agent_activities(db: AsyncSession = Depends(get_db)):
             endpoint_name=act["endpoint_name"],
             timestamp=act["timestamp"],
             details=act["details"],
-            status=act["status"]
+            status=act["status"],
         )
         for act in activities[:10]
     ]
@@ -491,7 +553,7 @@ async def get_agent_activities(db: AsyncSession = Depends(get_db)):
 async def get_system_health(db: AsyncSession = Depends(get_db)):
     """8. System Health for Database, Backend API, Redis, WebSocket, Agent Service."""
     now_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
-    
+
     # 1. Database Ping with real latency measurement
     db_start = time.perf_counter()
     db_status = "Online"
@@ -508,35 +570,35 @@ async def get_system_health(db: AsyncSession = Depends(get_db)):
             status=db_status,
             latency_ms=db_latency,
             last_checked=now_str,
-            details="Database pool connected and responding"
+            details="Database pool connected and responding",
         ),
         SystemServiceHealth(
             service="Backend API (FastAPI)",
             status="Online",
             latency_ms=0.8,
             last_checked=now_str,
-            details="ASGI router active on port 8000"
+            details="ASGI router active on port 8000",
         ),
         SystemServiceHealth(
             service="Redis Cache",
             status="Online",
             latency_ms=1.5,
             last_checked=now_str,
-            details="Memory cache operational"
+            details="Memory cache operational",
         ),
         SystemServiceHealth(
             service="WebSocket Gateway",
             status="Online",
             latency_ms=2.1,
             last_checked=now_str,
-            details="Live streaming socket server ready"
+            details="Live streaming socket server ready",
         ),
         SystemServiceHealth(
             service="Agent Queue Service",
             status="Online",
             latency_ms=3.4,
             last_checked=now_str,
-            details="Polling & queue broker active"
+            details="Polling & queue broker active",
         ),
     ]
 
@@ -550,58 +612,77 @@ class SearchResultItem(BaseModel):
     subtitle: str
     url: str
 
+
 class GlobalSearchData(BaseModel):
     results: List[SearchResultItem]
 
+
 @router.get("/search", response_model=SuccessResponse[GlobalSearchData])
-async def global_search(q: str = Query("", min_length=0), db: AsyncSession = Depends(get_db)):
+async def global_search(
+    q: str = Query("", min_length=0), db: AsyncSession = Depends(get_db)
+):
     query = q.strip().lower()
     if not query:
-        return SuccessResponse(message="Search query empty", data=GlobalSearchData(results=[]))
-    
+        return SuccessResponse(
+            message="Search query empty", data=GlobalSearchData(results=[])
+        )
+
     results: List[SearchResultItem] = []
-    
+
     # 1. Search Endpoints
     ep_res = await db.execute(select(Endpoint).limit(20))
     for ep in ep_res.scalars().all():
-        if (query in ep.hostname.lower() or 
-            (ep.os_version and query in ep.os_version.lower()) or 
-            (ep.ip_addresses and any(query in ip for ip in ep.ip_addresses))):
-            results.append(SearchResultItem(
-                id=str(ep.id),
-                type="endpoint",
-                title=ep.hostname,
-                subtitle=f"Endpoint • {ep.os_version or 'N/A'} • {ep.status}",
-                url=f"/endpoints/{ep.id}"
-            ))
+        if (
+            query in ep.hostname.lower()
+            or (ep.os_version and query in ep.os_version.lower())
+            or (ep.ip_addresses and any(query in ip for ip in ep.ip_addresses))
+        ):
+            results.append(
+                SearchResultItem(
+                    id=str(ep.id),
+                    type="endpoint",
+                    title=ep.hostname,
+                    subtitle=f"Endpoint • {ep.os_version or 'N/A'} • {ep.status}",
+                    url=f"/endpoints/{ep.id}",
+                )
+            )
 
     # 2. Search Alerts
     alert_res = await db.execute(select(Alert).limit(20))
     for a in alert_res.scalars().all():
-        if (query in a.title.lower() or 
-            (a.description and query in a.description.lower()) or 
-            (a.severity and query in a.severity.lower())):
-            results.append(SearchResultItem(
-                id=str(a.id),
-                type="alert",
-                title=a.title,
-                subtitle=f"Alert • Severity: {a.severity} • Status: {a.status}",
-                url="/alerts"
-            ))
+        if (
+            query in a.title.lower()
+            or (a.description and query in a.description.lower())
+            or (a.severity and query in a.severity.lower())
+        ):
+            results.append(
+                SearchResultItem(
+                    id=str(a.id),
+                    type="alert",
+                    title=a.title,
+                    subtitle=f"Alert • Severity: {a.severity} • Status: {a.status}",
+                    url="/alerts",
+                )
+            )
 
     # 3. Search Commands
     cmd_res = await db.execute(select(Command).limit(20))
     for c in cmd_res.scalars().all():
-        if (query in c.command_type.lower() or 
-            (c.created_by and query in c.created_by.lower()) or 
-            (c.status and query in c.status.lower())):
-            results.append(SearchResultItem(
-                id=str(c.id),
-                type="command",
-                title=f"Command: {c.command_type}",
-                subtitle=f"Command • Status: {c.status} • Operator: {c.created_by or 'admin'}",
-                url="/commands"
-            ))
+        if (
+            query in c.command_type.lower()
+            or (c.created_by and query in c.created_by.lower())
+            or (c.status and query in c.status.lower())
+        ):
+            results.append(
+                SearchResultItem(
+                    id=str(c.id),
+                    type="command",
+                    title=f"Command: {c.command_type}",
+                    subtitle=f"Command • Status: {c.status} • Operator: {c.created_by or 'admin'}",
+                    url="/commands",
+                )
+            )
 
-    return SuccessResponse(message="Search executed", data=GlobalSearchData(results=results[:10]))
-
+    return SuccessResponse(
+        message="Search executed", data=GlobalSearchData(results=results[:10])
+    )

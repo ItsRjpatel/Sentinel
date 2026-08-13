@@ -6,10 +6,10 @@ from app.core.websocket.auth import get_websocket_user
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
+
 @router.websocket("/commands")
 async def websocket_commands(
-    websocket: WebSocket,
-    username: str = Depends(get_websocket_user)
+    websocket: WebSocket, username: str = Depends(get_websocket_user)
 ):
     """
     WebSocket endpoint for real-time command streaming.

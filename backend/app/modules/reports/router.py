@@ -8,6 +8,7 @@ from app.modules.reports.schemas import ReportSummary, ReportTemplate
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+
 @router.get("/summary", response_model=SuccessResponse[ReportSummary])
 async def get_reports_summary(
     db: AsyncSession = Depends(get_db),
@@ -23,15 +24,40 @@ async def get_reports_summary(
         ),
     )
 
+
 @router.get("/templates", response_model=SuccessResponse[List[ReportTemplate]])
 async def get_report_templates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     templates = [
-        ReportTemplate(id="sec-audit", name="Executive Security Audit", category="Security", description="High-level threat and incident executive brief", format="PDF"),
-        ReportTemplate(id="compliance", name="PCI-DSS / ISO27001 Compliance", category="Compliance", description="Regulatory framework control validation", format="PDF/CSV"),
-        ReportTemplate(id="inventory", name="Endpoint Hardware & Software Inventory", category="Asset", description="Full asset telemetry and software list", format="CSV/Excel"),
-        ReportTemplate(id="command-log", name="Remote Command Audit Log Report", category="Audit", description="Detailed history of executed console commands", format="CSV"),
+        ReportTemplate(
+            id="sec-audit",
+            name="Executive Security Audit",
+            category="Security",
+            description="High-level threat and incident executive brief",
+            format="PDF",
+        ),
+        ReportTemplate(
+            id="compliance",
+            name="PCI-DSS / ISO27001 Compliance",
+            category="Compliance",
+            description="Regulatory framework control validation",
+            format="PDF/CSV",
+        ),
+        ReportTemplate(
+            id="inventory",
+            name="Endpoint Hardware & Software Inventory",
+            category="Asset",
+            description="Full asset telemetry and software list",
+            format="CSV/Excel",
+        ),
+        ReportTemplate(
+            id="command-log",
+            name="Remote Command Audit Log Report",
+            category="Audit",
+            description="Detailed history of executed console commands",
+            format="CSV",
+        ),
     ]
     return SuccessResponse(message="Report templates retrieved", data=templates)

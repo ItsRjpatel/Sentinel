@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.alerts.models import Alert
 from datetime import datetime, timezone
 
+
 class AlertRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -56,7 +57,9 @@ class AlertRepository:
         return alerts, total
 
     async def get_summary_counts(self) -> Dict[str, int]:
-        stmt = select(Alert.severity, Alert.status, func.count(Alert.id)).group_by(Alert.severity, Alert.status)
+        stmt = select(Alert.severity, Alert.status, func.count(Alert.id)).group_by(
+            Alert.severity, Alert.status
+        )
         res = await self.db.execute(stmt)
         rows = res.fetchall()
 

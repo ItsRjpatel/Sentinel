@@ -7,11 +7,12 @@ from app.modules.search.service import GlobalSearchService
 
 router = APIRouter(prefix="/search", tags=["search"])
 
+
 @router.get("")
 async def global_search(
     q: str = Query("", min_length=1),
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     service = GlobalSearchService(db)
     return await service.search_all(q)

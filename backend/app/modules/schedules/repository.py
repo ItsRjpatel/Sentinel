@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from app.modules.schedules.models import ScheduledJob, JobExecutionHistory
 
+
 class ScheduleRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -25,7 +26,9 @@ class ScheduleRepository:
         query = select(ScheduledJob)
         if status:
             query = query.where(ScheduledJob.status == status)
-        result = await self.session.execute(query.order_by(ScheduledJob.created_at.desc()))
+        result = await self.session.execute(
+            query.order_by(ScheduledJob.created_at.desc())
+        )
         return list(result.scalars().all())
 
     async def update(self, job: ScheduledJob) -> ScheduledJob:
@@ -41,7 +44,9 @@ class ScheduleRepository:
         await self.session.commit()
         return True
 
-    async def record_execution(self, history: JobExecutionHistory) -> JobExecutionHistory:
+    async def record_execution(
+        self, history: JobExecutionHistory
+    ) -> JobExecutionHistory:
         self.session.add(history)
         await self.session.commit()
         await self.session.refresh(history)
@@ -49,6 +54,8 @@ class ScheduleRepository:
 
     async def get_execution_history(self, job_id: str) -> List[JobExecutionHistory]:
         result = await self.session.execute(
-            select(JobExecutionHistory).where(JobExecutionHistory.job_id == job_id).order_by(JobExecutionHistory.started_at.desc())
+            select(JobExecutionHistory)
+            .where(JobExecutionHistory.job_id == job_id)
+            .order_by(JobExecutionHistory.started_at.desc())
         )
         return list(result.scalars().all())

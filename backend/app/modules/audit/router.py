@@ -16,6 +16,7 @@ from app.modules.audit.schemas import (
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
+
 def _to_audit_dto(l) -> AuditLogItem:
     return AuditLogItem(
         id=l.id,
@@ -35,6 +36,7 @@ def _to_audit_dto(l) -> AuditLogItem:
         correlation_id=l.correlation_id,
     )
 
+
 @router.get("/summary", response_model=SuccessResponse[AuditSummary])
 async def get_audit_summary(
     db: AsyncSession = Depends(get_db),
@@ -42,7 +44,10 @@ async def get_audit_summary(
 ):
     service = AuditService(db)
     counts = await service.get_summary()
-    return SuccessResponse(message="Audit log summary retrieved", data=AuditSummary(**counts))
+    return SuccessResponse(
+        message="Audit log summary retrieved", data=AuditSummary(**counts)
+    )
+
 
 @router.get("", response_model=SuccessResponse[PaginatedAuditResponse])
 async def list_audit_logs(
@@ -79,8 +84,11 @@ async def list_audit_logs(
     items = [_to_audit_dto(l) for l in logs]
     return SuccessResponse(
         message="Audit logs listed successfully",
-        data=PaginatedAuditResponse(items=items, total=total, page=page, size=page_size),
+        data=PaginatedAuditResponse(
+            items=items, total=total, page=page, size=page_size
+        ),
     )
+
 
 @router.get("/{id}", response_model=SuccessResponse[AuditLogItem])
 async def get_audit_log_details(

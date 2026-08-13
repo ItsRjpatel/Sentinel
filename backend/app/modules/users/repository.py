@@ -5,6 +5,7 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.auth.models import User, Role, UserRole
 
+
 class UserRepository:
     def __init__(self, db: AsyncSession):
         self.db = db

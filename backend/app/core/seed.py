@@ -12,8 +12,10 @@ from app.modules.commands.enums import CommandStatus, CommandType
 
 logger = logging.getLogger(__name__)
 
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
 
 async def seed_development_data() -> None:
     """
@@ -27,7 +29,9 @@ async def seed_development_data() -> None:
             count = res.scalar() or 0
 
             if count > 0:
-                logger.info(f"Database already contains {count} endpoints. Skipping seed.")
+                logger.info(
+                    f"Database already contains {count} endpoints. Skipping seed."
+                )
                 return
 
             logger.info("Database is empty. Populating development seed data...")

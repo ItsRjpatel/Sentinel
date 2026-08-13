@@ -18,6 +18,7 @@ from app.modules.alerts.schemas import (
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
+
 def _to_alert_dto(a) -> AlertResponse:
     return AlertResponse(
         id=a.id,
@@ -35,6 +36,7 @@ def _to_alert_dto(a) -> AlertResponse:
         updated_at=getattr(a, "updated_at", None),
     )
 
+
 @router.get("/summary", response_model=SuccessResponse[AlertSummaryData])
 async def get_alerts_summary(
     db: AsyncSession = Depends(get_db),
@@ -42,7 +44,10 @@ async def get_alerts_summary(
 ):
     service = AlertService(db)
     counts = await service.get_summary_counts()
-    return SuccessResponse(message="Alerts summary retrieved", data=AlertSummaryData(**counts))
+    return SuccessResponse(
+        message="Alerts summary retrieved", data=AlertSummaryData(**counts)
+    )
+
 
 @router.get("", response_model=SuccessResponse[PaginatedAlertsResponse])
 async def list_alerts(
@@ -67,8 +72,11 @@ async def list_alerts(
     items = [_to_alert_dto(a) for a in alerts]
     return SuccessResponse(
         message="Alerts listed successfully",
-        data=PaginatedAlertsResponse(items=items, total=total, page=page, size=page_size),
+        data=PaginatedAlertsResponse(
+            items=items, total=total, page=page, size=page_size
+        ),
     )
+
 
 @router.get("/{alert_id}", response_model=SuccessResponse[AlertResponse])
 async def get_alert(
@@ -80,6 +88,7 @@ async def get_alert(
     alert = await service.get_alert(alert_id)
     return SuccessResponse(message="Alert retrieved", data=_to_alert_dto(alert))
 
+
 @router.patch("/{alert_id}/acknowledge", response_model=SuccessResponse[AlertResponse])
 async def acknowledge_alert(
     alert_id: UUID,
@@ -89,6 +98,7 @@ async def acknowledge_alert(
     service = AlertService(db)
     alert = await service.acknowledge_alert(alert_id, analyst=current_user.username)
     return SuccessResponse(message="Alert acknowledged", data=_to_alert_dto(alert))
+
 
 @router.patch("/{alert_id}/resolve", response_model=SuccessResponse[AlertResponse])
 async def resolve_alert(
@@ -102,6 +112,7 @@ async def resolve_alert(
     alert = await service.resolve_alert(alert_id, resolution_notes=notes)
     return SuccessResponse(message="Alert resolved", data=_to_alert_dto(alert))
 
+
 @router.patch("/{alert_id}/reopen", response_model=SuccessResponse[AlertResponse])
 async def reopen_alert(
     alert_id: UUID,
@@ -112,6 +123,7 @@ async def reopen_alert(
     alert = await service.reopen_alert(alert_id)
     return SuccessResponse(message="Alert reopened", data=_to_alert_dto(alert))
 
+
 @router.patch("/{alert_id}/assign", response_model=SuccessResponse[AlertResponse])
 async def assign_alert(
     alert_id: UUID,
@@ -121,7 +133,10 @@ async def assign_alert(
 ):
     service = AlertService(db)
     alert = await service.assign_alert(alert_id, analyst=body.analyst)
-    return SuccessResponse(message="Alert assigned successfully", data=_to_alert_dto(alert))
+    return SuccessResponse(
+        message="Alert assigned successfully", data=_to_alert_dto(alert)
+    )
+
 
 @router.post("/{alert_id}/notes", response_model=SuccessResponse[AlertResponse])
 async def add_note(
@@ -131,5 +146,7 @@ async def add_note(
     current_user: User = Depends(get_current_user),
 ):
     service = AlertService(db)
-    alert = await service.add_note(alert_id, author=current_user.username, note_text=body.note)
+    alert = await service.add_note(
+        alert_id, author=current_user.username, note_text=body.note
+    )
     return SuccessResponse(message="Note added successfully", data=_to_alert_dto(alert))

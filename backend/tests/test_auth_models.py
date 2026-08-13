@@ -9,7 +9,7 @@ from app.modules.auth.schemas import CreateUser
 def test_user_model_attributes():
     """Verify that User model has all required attributes and relationships."""
     mapper = class_mapper(User)
-    
+
     # Check attributes
     assert "id" in mapper.columns
     assert "username" in mapper.columns
@@ -17,7 +17,7 @@ def test_user_model_attributes():
     assert "password_hash" in mapper.columns
     assert "is_active" in mapper.columns
     assert "deleted_at" in mapper.columns
-    
+
     # Check relationships
     relationships = [r.key for r in mapper.relationships]
     assert "roles" in relationships
@@ -27,7 +27,7 @@ def test_user_model_attributes():
 def test_role_model_attributes():
     """Verify that Role model has all required attributes and relationships."""
     mapper = class_mapper(Role)
-    
+
     assert "name" in mapper.columns
     relationships = [r.key for r in mapper.relationships]
     assert "users" in relationships
@@ -37,7 +37,7 @@ def test_role_model_attributes():
 def test_permission_model_attributes():
     """Verify that Permission model has all required attributes and relationships."""
     mapper = class_mapper(Permission)
-    
+
     assert "name" in mapper.columns
     relationships = [r.key for r in mapper.relationships]
     assert "roles" in relationships
@@ -46,7 +46,7 @@ def test_permission_model_attributes():
 def test_refresh_token_model_attributes():
     """Verify that RefreshToken model has all required attributes and relationships."""
     mapper = class_mapper(RefreshToken)
-    
+
     assert "token_hash" in mapper.columns
     assert "expiry" in mapper.columns
     relationships = [r.key for r in mapper.relationships]

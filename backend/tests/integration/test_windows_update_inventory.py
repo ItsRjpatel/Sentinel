@@ -7,20 +7,21 @@ from app.modules.endpoints.models import Endpoint
 from app.modules.inventory.models import WindowsUpdateInventory
 from app.modules.auth.models import User
 
+
 @pytest.mark.asyncio
 async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
     # 1. Fetch or create dummy admin user
     stmt = select(User).where(User.username == "admin")
     res = await db_session.execute(stmt)
     admin = res.scalar_one_or_none()
-    
+
     if not admin:
         admin = User(
             username="admin",
             email="admin_wu_test@example.com",
             password_hash="fake-hash",
             is_active=True,
-            is_verified=True
+            is_verified=True,
         )
         db_session.add(admin)
         await db_session.commit()
@@ -33,16 +34,14 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
         hostname="TEST-WU-HOST",
         os_version="Windows 11",
         hardware_hash="fake-hardware-hash-999",
-        status="healthy"
+        status="healthy",
     )
     db_session.add(endpoint)
     await db_session.commit()
 
     # 3. Generate access token
     token = create_access_token(
-        subject=str(endpoint_id),
-        username="TEST-WU-HOST",
-        roles=[]
+        subject=str(endpoint_id), username="TEST-WU-HOST", roles=[]
     )
     auth_headers = {"Authorization": f"Bearer {token}"}
 
@@ -68,7 +67,7 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
             "requires_restart": True,
             "is_hidden": False,
             "is_downloaded": True,
-            "installed_state": "Installed"
+            "installed_state": "Installed",
         },
         {
             "kb_number": "KB5045678",
@@ -90,15 +89,13 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
             "requires_restart": False,
             "is_hidden": False,
             "is_downloaded": True,
-            "installed_state": "Installed"
-        }
+            "installed_state": "Installed",
+        },
     ]
 
     # POST to windows-updates endpoint
     post_resp = await client.post(
-        "/api/v1/inventory/windows-updates",
-        json=payload,
-        headers=auth_headers
+        "/api/v1/inventory/windows-updates", json=payload, headers=auth_headers
     )
     assert post_resp.status_code == 200
     res_data = post_resp.json()
@@ -106,7 +103,9 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
     assert len(res_data["data"]) == 2
 
     # Direct DB verification
-    stmt_wu = select(WindowsUpdateInventory).where(WindowsUpdateInventory.endpoint_id == endpoint_id)
+    stmt_wu = select(WindowsUpdateInventory).where(
+        WindowsUpdateInventory.endpoint_id == endpoint_id
+    )
     db_res = await db_session.execute(stmt_wu)
     db_records = db_res.scalars().all()
     assert len(db_records) == 2
@@ -133,7 +132,7 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
             "requires_restart": True,
             "is_hidden": False,
             "is_downloaded": True,
-            "installed_state": "Installed"
+            "installed_state": "Installed",
         },
         {
             "kb_number": "KB5099999",
@@ -155,14 +154,14 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
             "requires_restart": True,
             "is_hidden": False,
             "is_downloaded": True,
-            "installed_state": "Installed"
-        }
+            "installed_state": "Installed",
+        },
     ]
 
     post_rec = await client.post(
         "/api/v1/inventory/windows-updates",
         json=payload_reconcile,
-        headers=auth_headers
+        headers=auth_headers,
     )
     assert post_rec.status_code == 200
 
@@ -174,22 +173,20 @@ async def test_windows_update_inventory_flow(client: AsyncClient, db_session):
     assert "KB5031234" in kbs
     assert "KB5099999" in kbs
     assert "KB5045678" not in kbs
-    
+
     kb1_record = next(r for r in db_records_rec if r.kb_number == "KB5031234")
     assert kb1_record.title == "Cumulative Update for Windows 11 (Modified)"
 
     # 6. GET self windows update inventory
     get_resp = await client.get(
-        "/api/v1/inventory/windows-updates",
-        headers=auth_headers
+        "/api/v1/inventory/windows-updates", headers=auth_headers
     )
     assert get_resp.status_code == 200
     assert len(get_resp.json()["data"]) == 2
 
     # 7. GET windows update inventory by endpoint_id
     get_by_id_resp = await client.get(
-        f"/api/v1/inventory/windows-updates/{endpoint_id}",
-        headers=auth_headers
+        f"/api/v1/inventory/windows-updates/{endpoint_id}", headers=auth_headers
     )
     assert get_by_id_resp.status_code == 200
     assert len(get_by_id_resp.json()["data"]) == 2

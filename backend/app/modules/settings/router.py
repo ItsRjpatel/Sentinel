@@ -10,6 +10,7 @@ from app.modules.settings.schemas import SettingItem, SettingUpdateRequest
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
+
 def _to_setting_dto(s) -> SettingItem:
     return SettingItem(
         id=s.id,
@@ -18,6 +19,7 @@ def _to_setting_dto(s) -> SettingItem:
         value=s.value or {},
         description=s.description,
     )
+
 
 @router.get("", response_model=SuccessResponse[List[SettingItem]])
 async def list_settings(
@@ -29,6 +31,7 @@ async def list_settings(
     items = [_to_setting_dto(s) for s in settings]
     return SuccessResponse(message="System settings retrieved", data=items)
 
+
 @router.put("/{key}", response_model=SuccessResponse[SettingItem])
 async def update_setting(
     key: str,
@@ -38,4 +41,6 @@ async def update_setting(
 ):
     service = SettingService(db)
     setting = await service.update_setting(key, body.value)
-    return SuccessResponse(message="Setting updated successfully", data=_to_setting_dto(setting))
+    return SuccessResponse(
+        message="Setting updated successfully", data=_to_setting_dto(setting)
+    )

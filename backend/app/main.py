@@ -8,7 +8,10 @@ from app.modules.auth.router import router as auth_router
 from app.modules.monitoring.router import router as monitoring_router
 from app.modules.endpoints.router import router as endpoints_router
 from app.modules.inventory.router import router as inventory_router
-from app.modules.commands.router import router as commands_router, endpoint_router as commands_endpoint_router
+from app.modules.commands.router import (
+    router as commands_router,
+    endpoint_router as commands_endpoint_router,
+)
 from app.modules.alerts.router import router as alerts_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.audit.router import router as audit_router
@@ -57,8 +60,9 @@ def create_app() -> FastAPI:
     app.include_router(schedules_router, prefix=settings.API_PREFIX)
     app.include_router(notifications_router, prefix=settings.API_PREFIX)
     app.include_router(search_router, prefix=settings.API_PREFIX)
-    
+
     from app.modules.commands.websocket import router as ws_commands_router
+
     app.include_router(ws_commands_router)
 
     return app

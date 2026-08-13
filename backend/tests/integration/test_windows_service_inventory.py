@@ -7,20 +7,21 @@ from app.modules.endpoints.models import Endpoint
 from app.modules.inventory.models import WindowsServiceInventory
 from app.modules.auth.models import User
 
+
 @pytest.mark.asyncio
 async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
     # 1. Fetch or create dummy admin user
     stmt = select(User).where(User.username == "admin")
     res = await db_session.execute(stmt)
     admin = res.scalar_one_or_none()
-    
+
     if not admin:
         admin = User(
             username="admin",
             email="admin_ws_test@example.com",
             password_hash="fake-hash",
             is_active=True,
-            is_verified=True
+            is_verified=True,
         )
         db_session.add(admin)
         await db_session.commit()
@@ -33,16 +34,14 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
         hostname="TEST-WS-HOST",
         os_version="Windows 11",
         hardware_hash="fake-hardware-hash-777",
-        status="healthy"
+        status="healthy",
     )
     db_session.add(endpoint)
     await db_session.commit()
 
     # 3. Generate access token
     token = create_access_token(
-        subject=str(endpoint_id),
-        username="TEST-WS-HOST",
-        roles=[]
+        subject=str(endpoint_id), username="TEST-WS-HOST", roles=[]
     )
     auth_headers = {"Authorization": f"Bearer {token}"}
 
@@ -70,7 +69,7 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
             "desktop_interaction": False,
             "tag_id": 0,
             "is_critical": True,
-            "digital_signature_status": "Valid"
+            "digital_signature_status": "Valid",
         },
         {
             "service_name": "Spooler",
@@ -94,15 +93,13 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
             "desktop_interaction": False,
             "tag_id": 0,
             "is_critical": False,
-            "digital_signature_status": "Valid"
-        }
+            "digital_signature_status": "Valid",
+        },
     ]
 
     # POST to services endpoint
     post_resp = await client.post(
-        "/api/v1/inventory/services",
-        json=payload,
-        headers=auth_headers
+        "/api/v1/inventory/services", json=payload, headers=auth_headers
     )
     assert post_resp.status_code == 200
     res_data = post_resp.json()
@@ -110,7 +107,9 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
     assert len(res_data["data"]) == 2
 
     # Direct DB verification
-    stmt_ws = select(WindowsServiceInventory).where(WindowsServiceInventory.endpoint_id == endpoint_id)
+    stmt_ws = select(WindowsServiceInventory).where(
+        WindowsServiceInventory.endpoint_id == endpoint_id
+    )
     db_res = await db_session.execute(stmt_ws)
     db_records = db_res.scalars().all()
     assert len(db_records) == 2
@@ -139,7 +138,7 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
             "desktop_interaction": False,
             "tag_id": 0,
             "is_critical": True,
-            "digital_signature_status": "Valid"
+            "digital_signature_status": "Valid",
         },
         {
             "service_name": "BITS",
@@ -163,14 +162,12 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
             "desktop_interaction": False,
             "tag_id": 0,
             "is_critical": False,
-            "digital_signature_status": "Valid"
-        }
+            "digital_signature_status": "Valid",
+        },
     ]
 
     post_rec = await client.post(
-        "/api/v1/inventory/services",
-        json=payload_reconcile,
-        headers=auth_headers
+        "/api/v1/inventory/services", json=payload_reconcile, headers=auth_headers
     )
     assert post_rec.status_code == 200
 
@@ -182,22 +179,18 @@ async def test_windows_service_inventory_flow(client: AsyncClient, db_session):
     assert "WinDefend" in services
     assert "BITS" in services
     assert "Spooler" not in services
-    
+
     windefend_record = next(r for r in db_records_rec if r.service_name == "WinDefend")
     assert windefend_record.current_state == "Stopped"
 
     # 6. GET self windows service inventory
-    get_resp = await client.get(
-        "/api/v1/inventory/services",
-        headers=auth_headers
-    )
+    get_resp = await client.get("/api/v1/inventory/services", headers=auth_headers)
     assert get_resp.status_code == 200
     assert len(get_resp.json()["data"]) == 2
 
     # 7. GET windows service inventory by endpoint_id
     get_by_id_resp = await client.get(
-        f"/api/v1/inventory/services/{endpoint_id}",
-        headers=auth_headers
+        f"/api/v1/inventory/services/{endpoint_id}", headers=auth_headers
     )
     assert get_by_id_resp.status_code == 200
     assert len(get_by_id_resp.json()["data"]) == 2

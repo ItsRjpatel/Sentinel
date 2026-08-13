@@ -6,6 +6,7 @@ from app.db.session import get_db as db_get_db
 from app.modules.auth.dependencies import get_db as auth_get_db
 from app.main import app
 
+
 @pytest.fixture
 async def db_connection():
     """Create a connection and begin a transaction that will be rolled back."""
@@ -17,6 +18,7 @@ async def db_connection():
         await transaction.rollback()
     await engine.dispose()
 
+
 @pytest.fixture
 async def db_session(db_connection):
     """Yield a session bound to the transaction, using savepoints for commit calls."""
@@ -27,6 +29,7 @@ async def db_session(db_connection):
     )
     yield session
     await session.close()
+
 
 @pytest.fixture
 async def client(db_session):
@@ -40,9 +43,11 @@ async def client(db_session):
 
     app.dependency_overrides[db_get_db] = override_get_db
     app.dependency_overrides[auth_get_db] = override_get_db
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         yield ac
-        
+
     # Restore original overrides
     app.dependency_overrides = backup

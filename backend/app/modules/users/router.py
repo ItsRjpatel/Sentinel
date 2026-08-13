@@ -20,6 +20,7 @@ from app.modules.users.schemas import (
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+
 def _to_user_dto(u) -> UserItemResponse:
     now_utc = datetime.now(timezone.utc)
     is_locked = bool(u.locked_until and u.locked_until > now_utc)
@@ -42,6 +43,7 @@ def _to_user_dto(u) -> UserItemResponse:
         roles=role_names,
     )
 
+
 @router.get("/summary", response_model=SuccessResponse[UsersSummary])
 async def get_users_summary(
     db: AsyncSession = Depends(get_db),
@@ -49,7 +51,10 @@ async def get_users_summary(
 ):
     service = UserService(db)
     counts = await service.get_summary()
-    return SuccessResponse(message="User summary retrieved", data=UsersSummary(**counts))
+    return SuccessResponse(
+        message="User summary retrieved", data=UsersSummary(**counts)
+    )
+
 
 @router.get("", response_model=SuccessResponse[PaginatedUsersResponse])
 async def list_users(
@@ -68,8 +73,11 @@ async def list_users(
     items = [_to_user_dto(u) for u in users]
     return SuccessResponse(
         message="Users listed successfully",
-        data=PaginatedUsersResponse(items=items, total=total, page=page, size=page_size),
+        data=PaginatedUsersResponse(
+            items=items, total=total, page=page, size=page_size
+        ),
     )
+
 
 @router.get("/{id}", response_model=SuccessResponse[UserItemResponse])
 async def get_user(
@@ -81,7 +89,12 @@ async def get_user(
     user = await service.get_user(id)
     return SuccessResponse(message="User retrieved", data=_to_user_dto(user))
 
-@router.post("", response_model=SuccessResponse[UserItemResponse], status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "",
+    response_model=SuccessResponse[UserItemResponse],
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_user(
     body: UserCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -90,6 +103,7 @@ async def create_user(
     service = UserService(db)
     user = await service.create_user(body)
     return SuccessResponse(message="User created successfully", data=_to_user_dto(user))
+
 
 @router.put("/{id}", response_model=SuccessResponse[UserItemResponse])
 async def update_user(
@@ -102,6 +116,7 @@ async def update_user(
     user = await service.update_user(id, body)
     return SuccessResponse(message="User updated successfully", data=_to_user_dto(user))
 
+
 @router.patch("/{id}/enable", response_model=SuccessResponse[UserItemResponse])
 async def enable_user(
     id: UUID,
@@ -111,6 +126,7 @@ async def enable_user(
     service = UserService(db)
     user = await service.enable_user(id)
     return SuccessResponse(message="User enabled", data=_to_user_dto(user))
+
 
 @router.patch("/{id}/disable", response_model=SuccessResponse[UserItemResponse])
 async def disable_user(
@@ -122,6 +138,7 @@ async def disable_user(
     user = await service.disable_user(id)
     return SuccessResponse(message="User disabled", data=_to_user_dto(user))
 
+
 @router.patch("/{id}/unlock", response_model=SuccessResponse[UserItemResponse])
 async def unlock_user(
     id: UUID,
@@ -132,6 +149,7 @@ async def unlock_user(
     user = await service.unlock_user(id)
     return SuccessResponse(message="User unlocked", data=_to_user_dto(user))
 
+
 @router.post("/{id}/reset-password", response_model=SuccessResponse[UserItemResponse])
 async def reset_password(
     id: UUID,
@@ -141,7 +159,10 @@ async def reset_password(
 ):
     service = UserService(db)
     user = await service.reset_password(id, body.new_password)
-    return SuccessResponse(message="Password reset successfully", data=_to_user_dto(user))
+    return SuccessResponse(
+        message="Password reset successfully", data=_to_user_dto(user)
+    )
+
 
 @router.delete("/{id}", response_model=SuccessResponse[dict])
 async def delete_user(

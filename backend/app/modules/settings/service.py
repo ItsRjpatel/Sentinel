@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from app.modules.settings.repository import SettingRepository
 from app.modules.settings.models import SystemSetting
 
+
 class SettingService:
     def __init__(self, db: AsyncSession):
         self.db = db

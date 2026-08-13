@@ -2,18 +2,22 @@ from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class NotificationBase(BaseModel):
     title: str
     message: str
-    severity: str = "INFO" # INFO, WARNING, ERROR, CRITICAL
-    category: str = "SYSTEM" # SYSTEM, SECURITY, COMMAND, COMPLIANCE
+    severity: str = "INFO"  # INFO, WARNING, ERROR, CRITICAL
+    category: str = "SYSTEM"  # SYSTEM, SECURITY, COMMAND, COMPLIANCE
     link: Optional[str] = None
     details: Optional[Dict[str, Any]] = None
+
 
 class NotificationCreate(NotificationBase):
     user_id: Optional[str] = None
 
+
 from uuid import UUID
+
 
 class NotificationResponse(NotificationBase):
     id: UUID
@@ -23,6 +27,7 @@ class NotificationResponse(NotificationBase):
 
     class Config:
         from_attributes = True
+
 
 class NotificationPreferenceSchema(BaseModel):
     email_enabled: bool = True

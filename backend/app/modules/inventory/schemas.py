@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict
 
+
 class HardwareInventoryBase(BaseModel):
     manufacturer: str = Field(..., max_length=255)
     model: str = Field(..., max_length=255)
@@ -20,8 +21,10 @@ class HardwareInventoryBase(BaseModel):
     secure_boot_enabled: bool
     is_virtual: bool
 
+
 class HardwareInventoryCreate(HardwareInventoryBase):
     pass
+
 
 class HardwareInventoryResponse(HardwareInventoryBase):
     id: uuid.UUID

@@ -18,6 +18,7 @@ if config.config_file_name is not None:
 
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings

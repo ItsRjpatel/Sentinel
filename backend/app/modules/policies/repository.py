@@ -3,7 +3,13 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.modules.policies.models import Policy, PolicyVersion, PolicyAssignment, PolicyResult
+from app.modules.policies.models import (
+    Policy,
+    PolicyVersion,
+    PolicyAssignment,
+    PolicyResult,
+)
+
 
 class PolicyRepository:
     def __init__(self, session: AsyncSession):
@@ -20,7 +26,7 @@ class PolicyRepository:
             version=policy.version,
             settings=policy.settings,
             change_summary="Initial policy creation",
-            created_by=policy.created_by
+            created_by=policy.created_by,
         )
         self.session.add(version)
         await self.session.commit()
@@ -39,7 +45,9 @@ class PolicyRepository:
         result = await self.session.execute(query.order_by(Policy.updated_at.desc()))
         return list(result.scalars().all())
 
-    async def update(self, policy: Policy, change_summary: Optional[str] = None) -> Policy:
+    async def update(
+        self, policy: Policy, change_summary: Optional[str] = None
+    ) -> Policy:
         policy.version += 1
         await self.session.commit()
 
@@ -49,7 +57,7 @@ class PolicyRepository:
             version=policy.version,
             settings=policy.settings,
             change_summary=change_summary or f"Updated to version {policy.version}",
-            created_by=policy.created_by
+            created_by=policy.created_by,
         )
         self.session.add(version)
         await self.session.commit()
@@ -66,17 +74,25 @@ class PolicyRepository:
 
     async def get_versions(self, policy_id: str) -> List[PolicyVersion]:
         result = await self.session.execute(
-            select(PolicyVersion).where(PolicyVersion.policy_id == policy_id).order_by(PolicyVersion.version.desc())
+            select(PolicyVersion)
+            .where(PolicyVersion.policy_id == policy_id)
+            .order_by(PolicyVersion.version.desc())
         )
         return list(result.scalars().all())
 
-    async def assign_policy(self, policy_id: str, target_type: str, target_ids: List[str], assigned_by: Optional[str] = None):
+    async def assign_policy(
+        self,
+        policy_id: str,
+        target_type: str,
+        target_ids: List[str],
+        assigned_by: Optional[str] = None,
+    ):
         for tid in target_ids:
             existing = await self.session.execute(
                 select(PolicyAssignment).where(
                     PolicyAssignment.policy_id == policy_id,
                     PolicyAssignment.target_type == target_type,
-                    PolicyAssignment.target_id == tid
+                    PolicyAssignment.target_id == tid,
                 )
             )
             if not existing.scalars().first():
@@ -84,7 +100,7 @@ class PolicyRepository:
                     policy_id=policy_id,
                     target_type=target_type,
                     target_id=tid,
-                    assigned_by=assigned_by
+                    assigned_by=assigned_by,
                 )
                 self.session.add(assign)
         await self.session.commit()

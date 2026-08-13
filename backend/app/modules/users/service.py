@@ -9,6 +9,7 @@ from app.modules.auth.models import User, Role, UserRole
 from app.core.security import get_password_hash
 from app.modules.users.schemas import UserCreateRequest, UserUpdateRequest
 
+
 class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -22,7 +23,9 @@ class UserService:
         role: Optional[str] = None,
         status: Optional[str] = None,
     ) -> Tuple[List[User], int]:
-        return await self.repo.list_paginated(page=page, page_size=page_size, search=search, role=role, status=status)
+        return await self.repo.list_paginated(
+            page=page, page_size=page_size, search=search, role=role, status=status
+        )
 
     async def get_summary(self) -> Dict[str, int]:
         return await self.repo.get_summary_counts()
@@ -30,13 +33,18 @@ class UserService:
     async def get_user(self, user_id: uuid.UUID) -> User:
         u = await self.repo.get_by_id(user_id)
         if not u:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
         return u
 
     async def create_user(self, req: UserCreateRequest) -> User:
         existing = await self.repo.get_by_username(req.username)
         if existing:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            )
 
         new_user = User(
             username=req.username,

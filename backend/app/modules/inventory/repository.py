@@ -3,8 +3,26 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from app.modules.inventory.models import HardwareInventory, OperatingSystemInventory, NetworkAdapterInventory, PhysicalDiskInventory, LogicalVolumeInventory, SoftwareInventory, WindowsUpdateInventory, WindowsServiceInventory
-from app.modules.inventory.schemas import HardwareInventoryCreate, OperatingSystemInventoryCreate, NetworkAdapterInventoryCreate, PhysicalDiskInventoryCreate, SoftwareInventoryCreate, WindowsUpdateInventoryCreate, WindowsServiceInventoryCreate
+from app.modules.inventory.models import (
+    HardwareInventory,
+    OperatingSystemInventory,
+    NetworkAdapterInventory,
+    PhysicalDiskInventory,
+    LogicalVolumeInventory,
+    SoftwareInventory,
+    WindowsUpdateInventory,
+    WindowsServiceInventory,
+)
+from app.modules.inventory.schemas import (
+    HardwareInventoryCreate,
+    OperatingSystemInventoryCreate,
+    NetworkAdapterInventoryCreate,
+    PhysicalDiskInventoryCreate,
+    SoftwareInventoryCreate,
+    WindowsUpdateInventoryCreate,
+    WindowsServiceInventoryCreate,
+)
+
 
 class HardwareInventoryRepository:
     """Handles persistence operations for HardwareInventory database records."""
@@ -12,16 +30,18 @@ class HardwareInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint_id(self, endpoint_id: uuid.UUID) -> Optional[HardwareInventory]:
+    async def get_by_endpoint_id(
+        self, endpoint_id: uuid.UUID
+    ) -> Optional[HardwareInventory]:
         """Queries the hardware inventory record linked to the endpoint UUID."""
-        stmt = select(HardwareInventory).where(HardwareInventory.endpoint_id == endpoint_id)
+        stmt = select(HardwareInventory).where(
+            HardwareInventory.endpoint_id == endpoint_id
+        )
         res = await self.session.execute(stmt)
         return res.scalar_one_or_none()
 
     async def create_or_update(
-        self,
-        endpoint_id: uuid.UUID,
-        data: HardwareInventoryCreate
+        self, endpoint_id: uuid.UUID, data: HardwareInventoryCreate
     ) -> HardwareInventory:
         """Saves a new hardware configuration record or updates existing matches."""
         record = await self.get_by_endpoint_id(endpoint_id)
@@ -32,10 +52,7 @@ class HardwareInventoryRepository:
                 setattr(record, key, val)
         else:
             # Insert a new record
-            record = HardwareInventory(
-                endpoint_id=endpoint_id,
-                **data.model_dump()
-            )
+            record = HardwareInventory(endpoint_id=endpoint_id, **data.model_dump())
             self.session.add(record)
 
         await self.session.flush()
@@ -48,16 +65,18 @@ class OperatingSystemInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> Optional[OperatingSystemInventory]:
+    async def get_by_endpoint(
+        self, endpoint_id: uuid.UUID
+    ) -> Optional[OperatingSystemInventory]:
         """Queries the OS inventory record linked to the endpoint UUID."""
-        stmt = select(OperatingSystemInventory).where(OperatingSystemInventory.endpoint_id == endpoint_id)
+        stmt = select(OperatingSystemInventory).where(
+            OperatingSystemInventory.endpoint_id == endpoint_id
+        )
         res = await self.session.execute(stmt)
         return res.scalar_one_or_none()
 
     async def upsert(
-        self,
-        endpoint_id: uuid.UUID,
-        data: OperatingSystemInventoryCreate
+        self, endpoint_id: uuid.UUID, data: OperatingSystemInventoryCreate
     ) -> OperatingSystemInventory:
         """Upserts an operating system configuration record matching the endpoint UUID."""
         record = await self.get_by_endpoint(endpoint_id)
@@ -67,8 +86,7 @@ class OperatingSystemInventoryRepository:
                 setattr(record, key, val)
         else:
             record = OperatingSystemInventory(
-                endpoint_id=endpoint_id,
-                **data.model_dump()
+                endpoint_id=endpoint_id, **data.model_dump()
             )
             self.session.add(record)
 
@@ -76,9 +94,7 @@ class OperatingSystemInventoryRepository:
         return record
 
     async def update(
-        self,
-        endpoint_id: uuid.UUID,
-        data: dict
+        self, endpoint_id: uuid.UUID, data: dict
     ) -> Optional[OperatingSystemInventory]:
         """Directly updates specific fields of the operating system configuration record."""
         record = await self.get_by_endpoint(endpoint_id)
@@ -105,16 +121,18 @@ class NetworkAdapterInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> list[NetworkAdapterInventory]:
+    async def get_by_endpoint(
+        self, endpoint_id: uuid.UUID
+    ) -> list[NetworkAdapterInventory]:
         """Queries all active network adapter records linked to the endpoint UUID."""
-        stmt = select(NetworkAdapterInventory).where(NetworkAdapterInventory.endpoint_id == endpoint_id)
+        stmt = select(NetworkAdapterInventory).where(
+            NetworkAdapterInventory.endpoint_id == endpoint_id
+        )
         res = await self.session.execute(stmt)
         return list(res.scalars().all())
 
     async def upsert_adapters(
-        self,
-        endpoint_id: uuid.UUID,
-        data_list: list[NetworkAdapterInventoryCreate]
+        self, endpoint_id: uuid.UUID, data_list: list[NetworkAdapterInventoryCreate]
     ) -> list[NetworkAdapterInventory]:
         """Performs incremental reconciliation (insert/update/delete) on endpoint adapters."""
         existing_adapters = await self.get_by_endpoint(endpoint_id)
@@ -132,8 +150,7 @@ class NetworkAdapterInventoryRepository:
                 reconciled.append(record)
             else:
                 record = NetworkAdapterInventory(
-                    endpoint_id=endpoint_id,
-                    **incoming.model_dump()
+                    endpoint_id=endpoint_id, **incoming.model_dump()
                 )
                 self.session.add(record)
                 reconciled.append(record)
@@ -153,7 +170,9 @@ class StorageInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> list[PhysicalDiskInventory]:
+    async def get_by_endpoint(
+        self, endpoint_id: uuid.UUID
+    ) -> list[PhysicalDiskInventory]:
         """Queries all physical disks linked to the endpoint, including nested volumes."""
         stmt = (
             select(PhysicalDiskInventory)
@@ -164,9 +183,7 @@ class StorageInventoryRepository:
         return list(res.scalars().all())
 
     async def upsert_storage(
-        self,
-        endpoint_id: uuid.UUID,
-        data_list: list[PhysicalDiskInventoryCreate]
+        self, endpoint_id: uuid.UUID, data_list: list[PhysicalDiskInventoryCreate]
     ) -> list[PhysicalDiskInventory]:
         """Performs incremental reconciliation of nested disks and volumes."""
         existing_disks = await self.get_by_endpoint(endpoint_id)
@@ -183,11 +200,13 @@ class StorageInventoryRepository:
                 disk_data = incoming_disk.model_dump(exclude={"volumes"})
                 for key, val in disk_data.items():
                     setattr(record, key, val)
-                
+
                 # Reconcile Logical Volumes
                 existing_vol_map = {vol.volume_guid: vol for vol in record.volumes}
-                incoming_vol_map = {vol.volume_guid: vol for vol in incoming_disk.volumes}
-                
+                incoming_vol_map = {
+                    vol.volume_guid: vol for vol in incoming_disk.volumes
+                }
+
                 # Update/Insert Volumes
                 for v_guid, incoming_vol in incoming_vol_map.items():
                     if v_guid in existing_vol_map:
@@ -196,11 +215,10 @@ class StorageInventoryRepository:
                             setattr(v_record, key, val)
                     else:
                         v_record = LogicalVolumeInventory(
-                            disk_id=record.id,
-                            **incoming_vol.model_dump()
+                            disk_id=record.id, **incoming_vol.model_dump()
                         )
                         self.session.add(v_record)
-                
+
                 # Delete old Volumes
                 for v_guid, existing_vol in existing_vol_map.items():
                     if v_guid not in incoming_vol_map:
@@ -210,20 +228,16 @@ class StorageInventoryRepository:
             else:
                 # Insert brand new Disk with nested Volumes
                 disk_data = incoming_disk.model_dump(exclude={"volumes"})
-                record = PhysicalDiskInventory(
-                    endpoint_id=endpoint_id,
-                    **disk_data
-                )
+                record = PhysicalDiskInventory(endpoint_id=endpoint_id, **disk_data)
                 self.session.add(record)
-                await self.session.flush() # flush to get record.id
-                
+                await self.session.flush()  # flush to get record.id
+
                 for incoming_vol in incoming_disk.volumes:
                     v_record = LogicalVolumeInventory(
-                        disk_id=record.id,
-                        **incoming_vol.model_dump()
+                        disk_id=record.id, **incoming_vol.model_dump()
                     )
                     self.session.add(v_record)
-                
+
                 reconciled_disks.append(record)
 
         # 2. Delete Disks no longer present
@@ -232,7 +246,7 @@ class StorageInventoryRepository:
                 await self.session.delete(existing_disk)
 
         await self.session.flush()
-        
+
         # We need to refresh the relationships because we've been modifying them
         stmt = (
             select(PhysicalDiskInventory)
@@ -251,17 +265,14 @@ class SoftwareInventoryRepository:
 
     async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> list[SoftwareInventory]:
         """Queries all software inventory items associated with the target endpoint UUID."""
-        stmt = (
-            select(SoftwareInventory)
-            .where(SoftwareInventory.endpoint_id == endpoint_id)
+        stmt = select(SoftwareInventory).where(
+            SoftwareInventory.endpoint_id == endpoint_id
         )
         res = await self.session.execute(stmt)
         return list(res.scalars().all())
 
     async def upsert_software(
-        self,
-        endpoint_id: uuid.UUID,
-        data_list: list[SoftwareInventoryCreate]
+        self, endpoint_id: uuid.UUID, data_list: list[SoftwareInventoryCreate]
     ) -> list[SoftwareInventory]:
         """Performs transactional reconciliation based on (endpoint_id, application_name, publisher, version)."""
         existing_items = await self.get_by_endpoint(endpoint_id)
@@ -285,8 +296,7 @@ class SoftwareInventoryRepository:
                 reconciled.append(record)
             else:
                 record = SoftwareInventory(
-                    endpoint_id=endpoint_id,
-                    **incoming.model_dump()
+                    endpoint_id=endpoint_id, **incoming.model_dump()
                 )
                 self.session.add(record)
                 reconciled.append(record)
@@ -306,31 +316,24 @@ class WindowsUpdateInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> list[WindowsUpdateInventory]:
+    async def get_by_endpoint(
+        self, endpoint_id: uuid.UUID
+    ) -> list[WindowsUpdateInventory]:
         """Queries all Windows Update items associated with the target endpoint UUID."""
-        stmt = (
-            select(WindowsUpdateInventory)
-            .where(WindowsUpdateInventory.endpoint_id == endpoint_id)
+        stmt = select(WindowsUpdateInventory).where(
+            WindowsUpdateInventory.endpoint_id == endpoint_id
         )
         res = await self.session.execute(stmt)
         return list(res.scalars().all())
 
     async def upsert_updates(
-        self,
-        endpoint_id: uuid.UUID,
-        data_list: list[WindowsUpdateInventoryCreate]
+        self, endpoint_id: uuid.UUID, data_list: list[WindowsUpdateInventoryCreate]
     ) -> list[WindowsUpdateInventory]:
         """Performs transactional reconciliation based on (endpoint_id, kb_number)."""
         existing_items = await self.get_by_endpoint(endpoint_id)
-        existing_map = {
-            item.kb_number: item
-            for item in existing_items
-        }
+        existing_map = {item.kb_number: item for item in existing_items}
 
-        incoming_map = {
-            item.kb_number: item
-            for item in data_list
-        }
+        incoming_map = {item.kb_number: item for item in data_list}
         reconciled = []
 
         # 1. Update existing or insert new update entries
@@ -342,8 +345,7 @@ class WindowsUpdateInventoryRepository:
                 reconciled.append(record)
             else:
                 record = WindowsUpdateInventory(
-                    endpoint_id=endpoint_id,
-                    **incoming.model_dump()
+                    endpoint_id=endpoint_id, **incoming.model_dump()
                 )
                 self.session.add(record)
                 reconciled.append(record)
@@ -363,31 +365,24 @@ class WindowsServiceInventoryRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_by_endpoint(self, endpoint_id: uuid.UUID) -> list[WindowsServiceInventory]:
+    async def get_by_endpoint(
+        self, endpoint_id: uuid.UUID
+    ) -> list[WindowsServiceInventory]:
         """Queries all Windows Service items associated with the target endpoint UUID."""
-        stmt = (
-            select(WindowsServiceInventory)
-            .where(WindowsServiceInventory.endpoint_id == endpoint_id)
+        stmt = select(WindowsServiceInventory).where(
+            WindowsServiceInventory.endpoint_id == endpoint_id
         )
         res = await self.session.execute(stmt)
         return list(res.scalars().all())
 
     async def upsert_services(
-        self,
-        endpoint_id: uuid.UUID,
-        data_list: list[WindowsServiceInventoryCreate]
+        self, endpoint_id: uuid.UUID, data_list: list[WindowsServiceInventoryCreate]
     ) -> list[WindowsServiceInventory]:
         """Performs transactional reconciliation based on (endpoint_id, service_name)."""
         existing_items = await self.get_by_endpoint(endpoint_id)
-        existing_map = {
-            item.service_name: item
-            for item in existing_items
-        }
+        existing_map = {item.service_name: item for item in existing_items}
 
-        incoming_map = {
-            item.service_name: item
-            for item in data_list
-        }
+        incoming_map = {item.service_name: item for item in data_list}
         reconciled = []
 
         # 1. Update existing or insert new service entries
@@ -399,8 +394,7 @@ class WindowsServiceInventoryRepository:
                 reconciled.append(record)
             else:
                 record = WindowsServiceInventory(
-                    endpoint_id=endpoint_id,
-                    **incoming.model_dump()
+                    endpoint_id=endpoint_id, **incoming.model_dump()
                 )
                 self.session.add(record)
                 reconciled.append(record)

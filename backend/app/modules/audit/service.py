@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from app.modules.audit.repository import AuditRepository
 from app.modules.audit.models import AuditLog
 
+
 class AuditService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -47,5 +48,8 @@ class AuditService:
     async def get_audit_log(self, log_id: uuid.UUID) -> AuditLog:
         log = await self.repo.get_by_id(log_id)
         if not log:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit log entry not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Audit log entry not found",
+            )
         return log

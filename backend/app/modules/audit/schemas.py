@@ -2,6 +2,7 @@ from pydantic import BaseModel, UUID4
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+
 class AuditLogItem(BaseModel):
     id: UUID4
     timestamp: datetime
@@ -19,11 +20,13 @@ class AuditLogItem(BaseModel):
     details: Optional[Dict[str, Any]] = None
     correlation_id: Optional[str] = None
 
+
 class PaginatedAuditResponse(BaseModel):
     items: List[AuditLogItem]
     total: int
     page: int
     size: int
+
 
 class AuditSummary(BaseModel):
     total: int

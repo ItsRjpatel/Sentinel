@@ -7,24 +7,25 @@ from app.modules.endpoints.models import Endpoint
 from app.modules.inventory.models import NetworkAdapterInventory
 from app.modules.auth.models import User
 
+
 @pytest.mark.asyncio
 async def test_network_inventory_flow(client: AsyncClient, db_session):
     # 1. Fetch or create a dummy admin user
     stmt = select(User).where(User.username == "admin")
     res = await db_session.execute(stmt)
     admin = res.scalar_one_or_none()
-    
+
     if not admin:
         admin = User(
             username="admin",
             email="admin_net_test@example.com",
             password_hash="fake-hash",
             is_active=True,
-            is_verified=True
+            is_verified=True,
         )
         db_session.add(admin)
         await db_session.commit()
-    
+
     # 2. Create a dummy endpoint record
     endpoint_id = uuid.uuid4()
     endpoint = Endpoint(
@@ -33,23 +34,21 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
         hostname="TEST-NET-HOST",
         os_version="Windows 11 (Build 22621)",
         hardware_hash="fake-hardware-hash-999",
-        status="healthy"
+        status="healthy",
     )
     db_session.add(endpoint)
     await db_session.commit()
 
     # 3. Generate access token representing this endpoint
     token = create_access_token(
-        subject=str(endpoint_id),
-        username="TEST-NET-HOST",
-        roles=[]
+        subject=str(endpoint_id), username="TEST-NET-HOST", roles=[]
     )
     auth_headers = {"Authorization": f"Bearer {token}"}
 
     # 4. Initial network adapters payload
     adapter_guid_1 = str(uuid.uuid4())
     adapter_guid_2 = str(uuid.uuid4())
-    
+
     payload = [
         {
             "hostname": "TEST-NET-HOST",
@@ -72,7 +71,7 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
             "operational_status": "Connected",
             "is_physical": True,
             "connection_type": "Ethernet",
-            "is_vpn": False
+            "is_vpn": False,
         },
         {
             "hostname": "TEST-NET-HOST",
@@ -95,15 +94,13 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
             "operational_status": "Connected",
             "is_physical": True,
             "connection_type": "WiFi",
-            "is_vpn": False
-        }
+            "is_vpn": False,
+        },
     ]
 
     # POST to network route
     post_resp = await client.post(
-        "/api/v1/inventory/network",
-        json=payload,
-        headers=auth_headers
+        "/api/v1/inventory/network", json=payload, headers=auth_headers
     )
     assert post_resp.status_code == 200
     res_data = post_resp.json()
@@ -111,11 +108,13 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
     assert len(res_data["data"]) == 2
 
     # Verify database directly
-    stmt = select(NetworkAdapterInventory).where(NetworkAdapterInventory.endpoint_id == endpoint_id)
+    stmt = select(NetworkAdapterInventory).where(
+        NetworkAdapterInventory.endpoint_id == endpoint_id
+    )
     db_res = await db_session.execute(stmt)
     db_records = db_res.scalars().all()
     assert len(db_records) == 2
-    
+
     db_map = {r.interface_guid: r for r in db_records}
     assert adapter_guid_1 in db_map
     assert db_map[adapter_guid_1].mac_address == "00:11:22:33:44:55"
@@ -146,7 +145,7 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
             "operational_status": "Connected",
             "is_physical": True,
             "connection_type": "Ethernet",
-            "is_vpn": False
+            "is_vpn": False,
         },
         {
             # New adapter 3
@@ -170,23 +169,23 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
             "operational_status": "Connected",
             "is_physical": False,
             "connection_type": "Ethernet",
-            "is_vpn": True
-        }
+            "is_vpn": True,
+        },
     ]
 
     post_rec = await client.post(
-        "/api/v1/inventory/network",
-        json=payload_reconcile,
-        headers=auth_headers
+        "/api/v1/inventory/network", json=payload_reconcile, headers=auth_headers
     )
     assert post_rec.status_code == 200
 
     # Query DB and verify reconciliation (2 records: updated adapter 1 and new adapter 3. Adapter 2 should be deleted!)
-    stmt_rec = select(NetworkAdapterInventory).where(NetworkAdapterInventory.endpoint_id == endpoint_id)
+    stmt_rec = select(NetworkAdapterInventory).where(
+        NetworkAdapterInventory.endpoint_id == endpoint_id
+    )
     db_res_rec = await db_session.execute(stmt_rec)
     db_records_rec = db_res_rec.scalars().all()
     assert len(db_records_rec) == 2
-    
+
     db_map_rec = {r.interface_guid: r for r in db_records_rec}
     assert adapter_guid_1 in db_map_rec
     assert db_map_rec[adapter_guid_1].ipv4 == "192.168.1.200"  # Verified update!
@@ -195,17 +194,13 @@ async def test_network_inventory_flow(client: AsyncClient, db_session):
     assert adapter_guid_2 not in db_map_rec  # Verified delete!
 
     # 6. GET self network inventory
-    get_resp = await client.get(
-        "/api/v1/inventory/network",
-        headers=auth_headers
-    )
+    get_resp = await client.get("/api/v1/inventory/network", headers=auth_headers)
     assert get_resp.status_code == 200
     assert len(get_resp.json()["data"]) == 2
 
     # 7. GET other endpoint network inventory by ID
     get_by_id_resp = await client.get(
-        f"/api/v1/inventory/network/{endpoint_id}",
-        headers=auth_headers
+        f"/api/v1/inventory/network/{endpoint_id}", headers=auth_headers
     )
     assert get_by_id_resp.status_code == 200
     assert len(get_by_id_resp.json()["data"]) == 2

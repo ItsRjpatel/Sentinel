@@ -30,6 +30,7 @@ router = APIRouter(tags=["endpoints"])
 
 # --- Schemas ---
 
+
 class EnrollRequest(BaseModel):
     agent_id: str
     identity_version: int = 1
@@ -39,11 +40,13 @@ class EnrollRequest(BaseModel):
     mac_addresses: List[str] = Field(default_factory=list)
     ip_addresses: List[str] = Field(default_factory=list)
 
+
 class EnrollData(BaseModel):
     agent_id: str
     access_token: str
     refresh_token: str
     heartbeat_interval_seconds: int
+
 
 class HeartbeatRequest(BaseModel):
     status: str
@@ -53,10 +56,12 @@ class HeartbeatRequest(BaseModel):
     security: Optional[dict] = None
     ip_addresses: Optional[List[str]] = None
 
+
 class HeartbeatData(BaseModel):
     config_revision: str
     config_payload: Optional[dict] = None
     command_pending: bool = False
+
 
 class EndpointItemResponse(BaseModel):
     id: str
@@ -77,15 +82,18 @@ class EndpointItemResponse(BaseModel):
     bitlocker_status: str = "Encrypted"
     policy_tag: str = "Production-Workstation"
 
+
 class EndpointsPaginationMeta(BaseModel):
     total: int
     page: int
     page_size: int
     total_pages: int
 
+
 class PaginatedEndpointsData(BaseModel):
     items: List[EndpointItemResponse]
     meta: EndpointsPaginationMeta
+
 
 class EndpointsSummaryData(BaseModel):
     total_endpoints: int
@@ -95,7 +103,9 @@ class EndpointsSummaryData(BaseModel):
     linux_count: int
     macos_count: int
 
+
 # --- Phase 4 Details Schemas ---
+
 
 class OverviewDetails(BaseModel):
     id: str
@@ -117,6 +127,7 @@ class OverviewDetails(BaseModel):
     security_score: int
     health: str
 
+
 class HardwareDetails(BaseModel):
     cpu_name: str
     cpu_cores: int
@@ -130,6 +141,7 @@ class HardwareDetails(BaseModel):
     is_virtual: bool
     gpu_name: str
 
+
 class PhysicalDiskItem(BaseModel):
     model: str
     manufacturer: str
@@ -138,6 +150,7 @@ class PhysicalDiskItem(BaseModel):
     size_gb: float
     health_status: str
     is_boot_disk: bool
+
 
 class LogicalVolumeItem(BaseModel):
     drive_letter: str
@@ -148,6 +161,7 @@ class LogicalVolumeItem(BaseModel):
     free_gb: float
     bitlocker_status: str
 
+
 class StorageDetails(BaseModel):
     physical_disks: List[PhysicalDiskItem]
     logical_volumes: List[LogicalVolumeItem]
@@ -156,6 +170,7 @@ class StorageDetails(BaseModel):
     total_free_gb: float
     drive_health: str
     bitlocker_status: str
+
 
 class SecurityDetails(BaseModel):
     defender_status: str
@@ -169,9 +184,11 @@ class SecurityDetails(BaseModel):
     compliance_score: int
     risk_level: str
 
+
 class MetricPoint(BaseModel):
     timestamp: str
     value: float
+
 
 class PerformanceDetails(BaseModel):
     range: str
@@ -179,6 +196,7 @@ class PerformanceDetails(BaseModel):
     memory_history: List[MetricPoint]
     disk_history: List[MetricPoint]
     network_history: List[MetricPoint]
+
 
 class NetworkAdapterItem(BaseModel):
     adapter_name: str
@@ -190,6 +208,7 @@ class NetworkAdapterItem(BaseModel):
     dhcp_enabled: bool
     operational_status: str = "Up"
 
+
 class NetworkDetails(BaseModel):
     hostname: str
     domain_workgroup: str
@@ -200,6 +219,7 @@ class NetworkDetails(BaseModel):
     primary_gateway: str
     adapters: List[NetworkAdapterItem]
 
+
 class SoftwareItem(BaseModel):
     application_name: str
     publisher: str
@@ -207,12 +227,14 @@ class SoftwareItem(BaseModel):
     install_date: str
     architecture: str
 
+
 class UpdateItem(BaseModel):
     kb_number: str
     title: str
     installed_on: str
     installed_state: str
     is_security_update: bool
+
 
 class ServiceItem(BaseModel):
     service_name: str
@@ -222,6 +244,7 @@ class ServiceItem(BaseModel):
     process_id: int
     executable_path: str
 
+
 class ProcessItem(BaseModel):
     pid: int
     name: str
@@ -229,11 +252,13 @@ class ProcessItem(BaseModel):
     memory_mb: float
     user: str
 
+
 class UserAccountItem(BaseModel):
     username: str
     is_admin: bool
     is_disabled: bool
     last_login: str
+
 
 class TimelineEventItem(BaseModel):
     id: str
@@ -252,8 +277,9 @@ async def get_agent_version():
     return {
         "version": "0.9.0",
         "download_url": "/api/v1/endpoints/download/installer",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     }
+
 
 @router.post("/agents/enroll", response_model=SuccessResponse[EnrollData])
 @router.post("/endpoints/enroll", response_model=SuccessResponse[EnrollData])
@@ -265,22 +291,27 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
         res = await db.execute(select(User))
         user = res.scalars().first()
         if not user:
-            raise HTTPException(status_code=500, detail="No system users available to host session.")
+            raise HTTPException(
+                status_code=500, detail="No system users available to host session."
+            )
 
     # Search by hardware_hash (primary physical identity) OR agent_id (logical identity)
     stmt = select(Endpoint).where(
         or_(
             Endpoint.hardware_hash == data.hardware_hash,
-            Endpoint.agent_id == data.agent_id
+            Endpoint.agent_id == data.agent_id,
         )
     )
     res = await db.execute(stmt)
     endpoints = res.scalars().all()
-    
+
     endpoint = None
     if endpoints:
         # Prefer the record matching hardware_hash if there's a conflict
-        endpoint = next((e for e in endpoints if e.hardware_hash == data.hardware_hash), endpoints[0])
+        endpoint = next(
+            (e for e in endpoints if e.hardware_hash == data.hardware_hash),
+            endpoints[0],
+        )
 
     if not endpoint:
         endpoint = Endpoint(
@@ -292,7 +323,7 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
             mac_addresses=data.mac_addresses,
             ip_addresses=data.ip_addresses,
             status="healthy",
-            identity_anomaly=False
+            identity_anomaly=False,
         )
         db.add(endpoint)
         await db.flush()
@@ -301,6 +332,7 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
         if endpoint.hardware_hash != data.hardware_hash:
             # Identity mismatch, log event and flag as anomaly
             import logging
+
             logger = logging.getLogger("sentinel.security")
             logger.warning(
                 f"Identity Anomaly Detected! AgentID: {data.agent_id} | "
@@ -309,7 +341,7 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
                 f"Reason: Hardware fingerprint changed."
             )
             endpoint.identity_anomaly = True
-            
+
         endpoint.agent_id = data.agent_id
         endpoint.hostname = data.hostname
         endpoint.os_version = data.os_version
@@ -320,9 +352,7 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
         await db.flush()
 
     access_token = create_access_token(
-        subject=str(endpoint.id),
-        username=endpoint.hostname,
-        roles=[]
+        subject=str(endpoint.id), username=endpoint.hostname, roles=[]
     )
 
     raw_refresh = secrets.token_hex(32)
@@ -330,7 +360,7 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
         token_hash=_hash_token(raw_refresh),
         expiry=datetime.now(timezone.utc) + timedelta(days=7),
         user_id=user.id,
-        revoked=False
+        revoked=False,
     )
     db.add(refresh_record)
     await db.commit()
@@ -341,8 +371,44 @@ async def enroll(data: EnrollRequest, db: AsyncSession = Depends(get_db)):
             agent_id=str(endpoint.id),
             access_token=access_token,
             refresh_token=raw_refresh,
-            heartbeat_interval_seconds=60
-        )
+            heartbeat_interval_seconds=60,
+        ),
+    )
+
+
+@router.get("/endpoints/me", response_model=SuccessResponse[dict])
+async def get_my_endpoint(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+):
+    """Safe read-only endpoint for the agent to verify its authentication token."""
+    try:
+        payload = verify_access_token(token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    agent_id_str = payload.get("sub")
+    if not agent_id_str:
+        raise HTTPException(status_code=401, detail="Token missing subject identifier.")
+
+    try:
+        agent_id = uuid.UUID(agent_id_str)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid subject UUID format.")
+
+    stmt = select(Endpoint).where(Endpoint.id == agent_id)
+    res = await db.execute(stmt)
+    endpoint = res.scalar_one_or_none()
+
+    if not endpoint:
+        raise HTTPException(status_code=401, detail="Enrolled endpoint not found.")
+
+    return SuccessResponse(
+        message="Authentication verified",
+        data={
+            "agent_id": str(endpoint.id),
+            "hostname": endpoint.hostname,
+            "status": endpoint.status,
+        },
     )
 
 
@@ -351,7 +417,7 @@ async def heartbeat(
     data: HeartbeatRequest,
     token: str = Depends(oauth2_scheme),
     x_agent_id: Optional[str] = Header(None, alias="X-Agent-ID"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         payload = verify_access_token(token)
@@ -377,7 +443,9 @@ async def heartbeat(
     from app.core.websocket.manager import connection_manager
     from app.core.websocket.schema import WebSocketEvent
 
-    time_diff = (datetime.now(timezone.utc) - endpoint.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+    time_diff = (
+        datetime.now(timezone.utc) - endpoint.last_seen.replace(tzinfo=timezone.utc)
+    ).total_seconds()
     was_offline = time_diff >= 180 or endpoint.status == "offline"
 
     # Update dynamic networking information from roaming heartbeat
@@ -390,10 +458,15 @@ async def heartbeat(
     await db.commit()
 
     if was_offline:
-        await connection_manager.broadcast(WebSocketEvent(event_type='endpoint_online', payload={"endpoint_id": str(endpoint.id)}))
+        await connection_manager.broadcast(
+            WebSocketEvent(
+                event_type="endpoint_online", payload={"endpoint_id": str(endpoint.id)}
+            )
+        )
 
     # Evaluate telemetry for alerts
     from app.modules.alerts.service import AlertService
+
     alert_service = AlertService(db)
     await alert_service.evaluate_telemetry(endpoint, data.metrics, data.security)
 
@@ -403,17 +476,19 @@ async def heartbeat(
         "cpu_usage_percent": data.metrics.get("cpu_usage_percent"),
         "memory_usage_percent": data.metrics.get("memory_usage_percent"),
         "disk_usage_percent": data.metrics.get("disk_usage_percent"),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    await connection_manager.broadcast(WebSocketEvent(event_type='performance_updated', payload=metrics_payload))
+    await connection_manager.broadcast(
+        WebSocketEvent(event_type="performance_updated", payload=metrics_payload)
+    )
 
     return SuccessResponse(
         message="Heartbeat accepted",
         data=HeartbeatData(
             config_revision=endpoint.config_version,
             config_payload=None,
-            command_pending=False
-        )
+            command_pending=False,
+        ),
     )
 
 
@@ -421,23 +496,27 @@ async def heartbeat(
 async def get_endpoints_summary(db: AsyncSession = Depends(get_db)):
     ep_res = await db.execute(select(Endpoint))
     endpoints = ep_res.scalars().all()
-    
+
     total = len(endpoints)
     now = datetime.now(timezone.utc)
-    
+
     online = 0
     offline = 0
     windows = 0
     linux = 0
     macos = 0
-    
+
     for ep in endpoints:
-        time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+        time_diff = (
+            (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+            if ep.last_seen
+            else 9999
+        )
         if time_diff < 180 and ep.status != "offline":
             online += 1
         else:
             offline += 1
-            
+
         os_str = ep.os_version or ""
         if "Windows" in os_str or "Server" in os_str:
             windows += 1
@@ -456,8 +535,8 @@ async def get_endpoints_summary(db: AsyncSession = Depends(get_db)):
             offline_count=offline,
             windows_count=windows,
             linux_count=linux,
-            macos_count=macos
-        )
+            macos_count=macos,
+        ),
     )
 
 
@@ -472,7 +551,7 @@ async def list_endpoints(
     tag: Optional[str] = Query(None),
     sort_by: str = Query("last_seen"),
     sort_order: str = Query("desc"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Endpoint)
 
@@ -482,17 +561,32 @@ async def list_endpoints(
             or_(
                 Endpoint.hostname.ilike(s_pattern),
                 Endpoint.os_version.ilike(s_pattern),
-                Endpoint.hardware_hash.ilike(s_pattern)
+                Endpoint.hardware_hash.ilike(s_pattern),
             )
         )
 
     if os and os != "all":
         if os.lower() == "windows":
-            stmt = stmt.where(or_(Endpoint.os_version.ilike("%Windows%"), Endpoint.os_version.ilike("%Server%")))
+            stmt = stmt.where(
+                or_(
+                    Endpoint.os_version.ilike("%Windows%"),
+                    Endpoint.os_version.ilike("%Server%"),
+                )
+            )
         elif os.lower() == "linux":
-            stmt = stmt.where(or_(Endpoint.os_version.ilike("%Linux%"), Endpoint.os_version.ilike("%Ubuntu%")))
+            stmt = stmt.where(
+                or_(
+                    Endpoint.os_version.ilike("%Linux%"),
+                    Endpoint.os_version.ilike("%Ubuntu%"),
+                )
+            )
         elif os.lower() == "macos":
-            stmt = stmt.where(or_(Endpoint.os_version.ilike("%macOS%"), Endpoint.os_version.ilike("%Mac%")))
+            stmt = stmt.where(
+                or_(
+                    Endpoint.os_version.ilike("%macOS%"),
+                    Endpoint.os_version.ilike("%Mac%"),
+                )
+            )
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_res = await db.execute(count_stmt)
@@ -513,9 +607,13 @@ async def list_endpoints(
     now = datetime.now(timezone.utc)
     items = []
     for ep in endpoints:
-        time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+        time_diff = (
+            (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+            if ep.last_seen
+            else 9999
+        )
         is_online = time_diff < 180 and ep.status != "offline"
-        
+
         status_label = "Online" if is_online else "Offline"
         if status and status != "all":
             if status.lower() == "online" and not is_online:
@@ -523,9 +621,19 @@ async def list_endpoints(
             elif status.lower() == "offline" and is_online:
                 continue
 
-        health_label = "Healthy" if ep.status == "healthy" else "Warning" if ep.status == "warning" else "Critical"
-        sec_score = 98 if ep.status == "healthy" else 74 if ep.status == "warning" else 45
-        policy_tag = "Domain-Controller" if "DC" in ep.hostname else "App-Server" if "SRV" in ep.hostname else "Workstation-Policy"
+        health_label = (
+            "Healthy"
+            if ep.status == "healthy"
+            else "Warning" if ep.status == "warning" else "Critical"
+        )
+        sec_score = (
+            98 if ep.status == "healthy" else 74 if ep.status == "warning" else 45
+        )
+        policy_tag = (
+            "Domain-Controller"
+            if "DC" in ep.hostname
+            else "App-Server" if "SRV" in ep.hostname else "Workstation-Policy"
+        )
 
         items.append(
             EndpointItemResponse(
@@ -538,14 +646,18 @@ async def list_endpoints(
                 status=status_label,
                 is_online=is_online,
                 last_seen=ep.last_seen.isoformat() if ep.last_seen else "Never",
-                current_user="SYSTEM" if "Server" in ep.os_version or "Ubuntu" in ep.os_version else "Administrator",
+                current_user=(
+                    "SYSTEM"
+                    if "Server" in ep.os_version or "Ubuntu" in ep.os_version
+                    else "Administrator"
+                ),
                 security_score=sec_score,
                 health=health_label,
                 config_version=ep.config_version or "1.4.2",
                 tpm_enabled=True if "WIN" in ep.hostname else False,
                 defender_status="Active" if "WIN" in ep.hostname else "N/A",
                 bitlocker_status="Encrypted" if "WIN" in ep.hostname else "N/A",
-                policy_tag=policy_tag
+                policy_tag=policy_tag,
             )
         )
 
@@ -559,13 +671,15 @@ async def list_endpoints(
                 total=total_count,
                 page=page,
                 page_size=page_size,
-                total_pages=total_pages
-            )
-        )
+                total_pages=total_pages,
+            ),
+        ),
     )
 
 
-@router.get("/endpoints/{endpoint_id}", response_model=SuccessResponse[EndpointItemResponse])
+@router.get(
+    "/endpoints/{endpoint_id}", response_model=SuccessResponse[EndpointItemResponse]
+)
 async def get_endpoint_by_id(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     try:
         ep_uuid = uuid.UUID(endpoint_id)
@@ -580,7 +694,11 @@ async def get_endpoint_by_id(endpoint_id: str, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=404, detail="Endpoint not found.")
 
     now = datetime.now(timezone.utc)
-    time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+    time_diff = (
+        (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+        if ep.last_seen
+        else 9999
+    )
     is_online = time_diff < 180 and ep.status != "offline"
     sec_score = 98 if ep.status == "healthy" else 74 if ep.status == "warning" else 45
 
@@ -594,14 +712,18 @@ async def get_endpoint_by_id(endpoint_id: str, db: AsyncSession = Depends(get_db
         status="Online" if is_online else "Offline",
         is_online=is_online,
         last_seen=ep.last_seen.isoformat() if ep.last_seen else "Never",
-        current_user="SYSTEM" if "Server" in ep.os_version or "Ubuntu" in ep.os_version else "Administrator",
+        current_user=(
+            "SYSTEM"
+            if "Server" in ep.os_version or "Ubuntu" in ep.os_version
+            else "Administrator"
+        ),
         security_score=sec_score,
         health="Healthy" if ep.status == "healthy" else "Warning",
         config_version=ep.config_version or "1.4.2",
         tpm_enabled=True if "WIN" in ep.hostname else False,
         defender_status="Active" if "WIN" in ep.hostname else "N/A",
         bitlocker_status="Encrypted" if "WIN" in ep.hostname else "N/A",
-        policy_tag="Enterprise-Policy"
+        policy_tag="Enterprise-Policy",
     )
 
     return SuccessResponse(message="Endpoint details retrieved", data=data)
@@ -609,12 +731,13 @@ async def get_endpoint_by_id(endpoint_id: str, db: AsyncSession = Depends(get_db
 
 # --- Phase 4 Modular Tab APIs ---
 
+
 async def _get_endpoint_or_404(endpoint_id: str, db: AsyncSession) -> Endpoint:
     try:
         ep_uuid = uuid.UUID(endpoint_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid endpoint UUID format.")
-    
+
     res = await db.execute(select(Endpoint).where(Endpoint.id == ep_uuid))
     ep = res.scalar_one_or_none()
     if not ep:
@@ -622,24 +745,40 @@ async def _get_endpoint_or_404(endpoint_id: str, db: AsyncSession) -> Endpoint:
     return ep
 
 
-@router.get("/endpoints/{endpoint_id}/overview", response_model=SuccessResponse[OverviewDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/overview", response_model=SuccessResponse[OverviewDetails]
+)
 async def get_overview(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
-    
-    hw_res = await db.execute(select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id))
+
+    hw_res = await db.execute(
+        select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id)
+    )
     hw = hw_res.scalar_one_or_none()
-    
-    os_res = await db.execute(select(OperatingSystemInventory).where(OperatingSystemInventory.endpoint_id == ep.id))
+
+    os_res = await db.execute(
+        select(OperatingSystemInventory).where(
+            OperatingSystemInventory.endpoint_id == ep.id
+        )
+    )
     os_inv = os_res.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
-    time_diff = (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds() if ep.last_seen else 9999
+    time_diff = (
+        (now - ep.last_seen.replace(tzinfo=timezone.utc)).total_seconds()
+        if ep.last_seen
+        else 9999
+    )
     is_online = time_diff < 180 and ep.status != "offline"
 
     data = OverviewDetails(
         id=str(ep.id),
         hostname=ep.hostname,
-        endpoint_type="Workstation" if "WIN-11" in ep.hostname or "DESKTOP" in ep.hostname else "Server",
+        endpoint_type=(
+            "Workstation"
+            if "WIN-11" in ep.hostname or "DESKTOP" in ep.hostname
+            else "Server"
+        ),
         is_online=is_online,
         status="Online" if is_online else "Offline",
         last_heartbeat=ep.last_seen.isoformat() if ep.last_seen else "Never",
@@ -648,22 +787,30 @@ async def get_overview(endpoint_id: str, db: AsyncSession = Depends(get_db)):
         serial_number=hw.serial_number if hw else "SN-940128401",
         manufacturer=hw.manufacturer if hw else "Dell Inc.",
         model=hw.model if hw else "Latitude 5520",
-        enrolled_date=ep.created_at.isoformat() if hasattr(ep, "created_at") and ep.created_at else "2026-01-15T08:00:00Z",
+        enrolled_date=(
+            ep.created_at.isoformat()
+            if hasattr(ep, "created_at") and ep.created_at
+            else "2026-01-15T08:00:00Z"
+        ),
         agent_version=ep.config_version or "1.4.2",
         ip_addresses=ep.ip_addresses or ["10.0.0.1"],
         mac_addresses=ep.mac_addresses or ["00:1A:2B:3C:4D:5E"],
         current_user="Administrator" if is_online else "SYSTEM",
         security_score=95 if ep.status == "healthy" else 72,
-        health="Healthy" if ep.status == "healthy" else "Warning"
+        health="Healthy" if ep.status == "healthy" else "Warning",
     )
     return SuccessResponse(message="Overview details loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/hardware", response_model=SuccessResponse[HardwareDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/hardware", response_model=SuccessResponse[HardwareDetails]
+)
 async def get_hardware(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
-    
-    hw_res = await db.execute(select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id))
+
+    hw_res = await db.execute(
+        select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id)
+    )
     hw = hw_res.scalar_one_or_none()
 
     data = HardwareDetails(
@@ -677,16 +824,20 @@ async def get_hardware(endpoint_id: str, db: AsyncSession = Depends(get_db)):
         tpm_version=hw.tpm_version if (hw and hw.tpm_version) else "2.0",
         secure_boot_enabled=hw.secure_boot_enabled if hw else True,
         is_virtual=hw.is_virtual if hw else False,
-        gpu_name="Intel(R) Iris(R) Xe Graphics"
+        gpu_name="Intel(R) Iris(R) Xe Graphics",
     )
     return SuccessResponse(message="Hardware details loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/storage", response_model=SuccessResponse[StorageDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/storage", response_model=SuccessResponse[StorageDetails]
+)
 async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    disk_res = await db.execute(select(PhysicalDiskInventory).where(PhysicalDiskInventory.endpoint_id == ep.id))
+    disk_res = await db.execute(
+        select(PhysicalDiskInventory).where(PhysicalDiskInventory.endpoint_id == ep.id)
+    )
     disks = disk_res.scalars().all()
 
     physical_disks = []
@@ -706,11 +857,13 @@ async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 media_type=d.media_type,
                 size_gb=cap_gb,
                 health_status=d.health_status,
-                is_boot_disk=d.is_boot_disk
+                is_boot_disk=d.is_boot_disk,
             )
         )
 
-        vol_res = await db.execute(select(LogicalVolumeInventory).where(LogicalVolumeInventory.disk_id == d.id))
+        vol_res = await db.execute(
+            select(LogicalVolumeInventory).where(LogicalVolumeInventory.disk_id == d.id)
+        )
         vols = vol_res.scalars().all()
         for v in vols:
             v_cap = round(v.capacity_bytes / (1024**3), 2)
@@ -727,7 +880,7 @@ async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                     capacity_gb=v_cap,
                     used_gb=v_used,
                     free_gb=v_free,
-                    bitlocker_status=v.bitlocker_status
+                    bitlocker_status=v.bitlocker_status,
                 )
             )
 
@@ -741,7 +894,7 @@ async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 media_type="SSD",
                 size_gb=512.0,
                 health_status="Healthy",
-                is_boot_disk=True
+                is_boot_disk=True,
             )
         )
         logical_volumes.append(
@@ -752,7 +905,7 @@ async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 capacity_gb=512.0,
                 used_gb=128.4,
                 free_gb=383.6,
-                bitlocker_status="FullyEncrypted"
+                bitlocker_status="FullyEncrypted",
             )
         )
         tot_cap = 512.0
@@ -766,16 +919,20 @@ async def get_storage(endpoint_id: str, db: AsyncSession = Depends(get_db)):
         total_used_gb=tot_used,
         total_free_gb=tot_free,
         drive_health="Healthy",
-        bitlocker_status="Encrypted"
+        bitlocker_status="Encrypted",
     )
     return SuccessResponse(message="Storage details loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/security", response_model=SuccessResponse[SecurityDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/security", response_model=SuccessResponse[SecurityDetails]
+)
 async def get_security(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    hw_res = await db.execute(select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id))
+    hw_res = await db.execute(
+        select(HardwareInventory).where(HardwareInventory.endpoint_id == ep.id)
+    )
     hw = hw_res.scalar_one_or_none()
 
     data = SecurityDetails(
@@ -788,20 +945,27 @@ async def get_security(endpoint_id: str, db: AsyncSession = Depends(get_db)):
         antivirus_status="Real-Time Protection Active",
         security_score=95 if ep.status == "healthy" else 68,
         compliance_score=98 if ep.status == "healthy" else 75,
-        risk_level="Low" if ep.status == "healthy" else "Medium"
+        risk_level="Low" if ep.status == "healthy" else "Medium",
     )
     return SuccessResponse(message="Security details loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/performance", response_model=SuccessResponse[PerformanceDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/performance",
+    response_model=SuccessResponse[PerformanceDetails],
+)
 async def get_performance(
     endpoint_id: str,
     range_type: str = Query("1h", alias="range"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    points = 12 if range_type == "30m" else 24 if range_type == "1h" else 30 if range_type == "6h" else 48
+    points = (
+        12
+        if range_type == "30m"
+        else 24 if range_type == "1h" else 30 if range_type == "6h" else 48
+    )
     now = datetime.now(timezone.utc)
 
     cpu_history = []
@@ -826,16 +990,22 @@ async def get_performance(
         cpu_history=cpu_history,
         memory_history=mem_history,
         disk_history=disk_history,
-        network_history=net_history
+        network_history=net_history,
     )
     return SuccessResponse(message="Performance telemetry loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/network", response_model=SuccessResponse[NetworkDetails])
+@router.get(
+    "/endpoints/{endpoint_id}/network", response_model=SuccessResponse[NetworkDetails]
+)
 async def get_network(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    net_res = await db.execute(select(NetworkAdapterInventory).where(NetworkAdapterInventory.endpoint_id == ep.id))
+    net_res = await db.execute(
+        select(NetworkAdapterInventory).where(
+            NetworkAdapterInventory.endpoint_id == ep.id
+        )
+    )
     net_adapters = net_res.scalars().all()
 
     adapters = []
@@ -849,22 +1019,42 @@ async def get_network(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 gateway=n.gateway,
                 dns_servers=n.dns_servers,
                 dhcp_enabled=n.dhcp_enabled,
-                operational_status=n.operational_status
+                operational_status=n.operational_status,
             )
         )
 
     # Prioritize 10.x or 192.168.x LAN IPs over 172.x virtual adapter IPs
     primary_ip = "10.0.0.100"
     if ep.ip_addresses:
-        physical_ips = [ip for ip in ep.ip_addresses if ip.startswith("10.") or ip.startswith("192.168.")]
+        physical_ips = [
+            ip
+            for ip in ep.ip_addresses
+            if ip.startswith("10.") or ip.startswith("192.168.")
+        ]
         primary_ip = physical_ips[0] if physical_ips else ep.ip_addresses[0]
     elif net_adapters:
         primary_ip = net_adapters[0].ipv4
 
-    primary_mac = ep.mac_addresses[0] if ep.mac_addresses and len(ep.mac_addresses) > 0 else (net_adapters[0].mac_address if net_adapters else "00:1A:2B:3C:4D:5E")
-    primary_dns = net_adapters[0].dns_servers if net_adapters and net_adapters[0].dns_servers else "10.0.0.1, 8.8.8.8"
-    primary_gateway = net_adapters[0].gateway if net_adapters and net_adapters[0].gateway else "10.0.0.254"
-    domain_wg = net_adapters[0].domain_workgroup if net_adapters and net_adapters[0].domain_workgroup else "CORP.INTERNAL"
+    primary_mac = (
+        ep.mac_addresses[0]
+        if ep.mac_addresses and len(ep.mac_addresses) > 0
+        else (net_adapters[0].mac_address if net_adapters else "00:1A:2B:3C:4D:5E")
+    )
+    primary_dns = (
+        net_adapters[0].dns_servers
+        if net_adapters and net_adapters[0].dns_servers
+        else "10.0.0.1, 8.8.8.8"
+    )
+    primary_gateway = (
+        net_adapters[0].gateway
+        if net_adapters and net_adapters[0].gateway
+        else "10.0.0.254"
+    )
+    domain_wg = (
+        net_adapters[0].domain_workgroup
+        if net_adapters and net_adapters[0].domain_workgroup
+        else "CORP.INTERNAL"
+    )
 
     data = NetworkDetails(
         hostname=ep.hostname,
@@ -874,16 +1064,23 @@ async def get_network(endpoint_id: str, db: AsyncSession = Depends(get_db)):
         primary_mac=primary_mac,
         primary_dns=primary_dns,
         primary_gateway=primary_gateway,
-        adapters=adapters
+        adapters=adapters,
     )
     return SuccessResponse(message="Network details loaded", data=data)
 
 
-@router.get("/endpoints/{endpoint_id}/software", response_model=SuccessResponse[List[SoftwareItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/software",
+    response_model=SuccessResponse[List[SoftwareItem]],
+)
 async def get_software(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    soft_res = await db.execute(select(SoftwareInventory).where(SoftwareInventory.endpoint_id == ep.id).limit(100))
+    soft_res = await db.execute(
+        select(SoftwareInventory)
+        .where(SoftwareInventory.endpoint_id == ep.id)
+        .limit(100)
+    )
     software_list = soft_res.scalars().all()
 
     items = []
@@ -894,18 +1091,24 @@ async def get_software(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 publisher=s.publisher,
                 version=s.version,
                 install_date=s.install_date,
-                architecture=s.architecture
+                architecture=s.architecture,
             )
         )
 
     return SuccessResponse(message="Software inventory loaded", data=items)
 
 
-@router.get("/endpoints/{endpoint_id}/updates", response_model=SuccessResponse[List[UpdateItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/updates", response_model=SuccessResponse[List[UpdateItem]]
+)
 async def get_updates(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    upd_res = await db.execute(select(WindowsUpdateInventory).where(WindowsUpdateInventory.endpoint_id == ep.id).limit(100))
+    upd_res = await db.execute(
+        select(WindowsUpdateInventory)
+        .where(WindowsUpdateInventory.endpoint_id == ep.id)
+        .limit(100)
+    )
     updates = upd_res.scalars().all()
 
     items = []
@@ -916,18 +1119,25 @@ async def get_updates(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 title=u.title,
                 installed_on=u.installed_on,
                 installed_state=u.installed_state,
-                is_security_update=u.is_security_update
+                is_security_update=u.is_security_update,
             )
         )
 
     return SuccessResponse(message="Windows updates loaded", data=items)
 
 
-@router.get("/endpoints/{endpoint_id}/services", response_model=SuccessResponse[List[ServiceItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/services",
+    response_model=SuccessResponse[List[ServiceItem]],
+)
 async def get_services(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
-    svc_res = await db.execute(select(WindowsServiceInventory).where(WindowsServiceInventory.endpoint_id == ep.id).limit(100))
+    svc_res = await db.execute(
+        select(WindowsServiceInventory)
+        .where(WindowsServiceInventory.endpoint_id == ep.id)
+        .limit(100)
+    )
     services = svc_res.scalars().all()
 
     items = []
@@ -939,47 +1149,114 @@ async def get_services(endpoint_id: str, db: AsyncSession = Depends(get_db)):
                 current_state=s.current_state,
                 start_mode=s.start_mode,
                 process_id=s.process_id,
-                executable_path=s.executable_path
+                executable_path=s.executable_path,
             )
         )
 
     return SuccessResponse(message="Windows services loaded", data=items)
 
 
-@router.get("/endpoints/{endpoint_id}/processes", response_model=SuccessResponse[List[ProcessItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/processes",
+    response_model=SuccessResponse[List[ProcessItem]],
+)
 async def get_processes(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
     # Standard process list
     processes = [
-        ProcessItem(pid=4, name="System", cpu_percent=0.1, memory_mb=0.1, user="NT AUTHORITY\\SYSTEM"),
-        ProcessItem(pid=612, name="services.exe", cpu_percent=0.2, memory_mb=14.2, user="NT AUTHORITY\\SYSTEM"),
-        ProcessItem(pid=890, name="lsass.exe", cpu_percent=0.4, memory_mb=28.4, user="NT AUTHORITY\\SYSTEM"),
-        ProcessItem(pid=1420, name="svchost.exe", cpu_percent=1.2, memory_mb=42.1, user="NT AUTHORITY\\NETWORK SERVICE"),
-        ProcessItem(pid=2840, name="MsMpEng.exe", cpu_percent=1.8, memory_mb=182.5, user="NT AUTHORITY\\SYSTEM"),
-        ProcessItem(pid=3100, name="sentinel_agent.exe", cpu_percent=0.8, memory_mb=34.6, user="NT AUTHORITY\\SYSTEM"),
-        ProcessItem(pid=4210, name="explorer.exe", cpu_percent=2.4, memory_mb=98.3, user="CORP\\Administrator"),
+        ProcessItem(
+            pid=4,
+            name="System",
+            cpu_percent=0.1,
+            memory_mb=0.1,
+            user="NT AUTHORITY\\SYSTEM",
+        ),
+        ProcessItem(
+            pid=612,
+            name="services.exe",
+            cpu_percent=0.2,
+            memory_mb=14.2,
+            user="NT AUTHORITY\\SYSTEM",
+        ),
+        ProcessItem(
+            pid=890,
+            name="lsass.exe",
+            cpu_percent=0.4,
+            memory_mb=28.4,
+            user="NT AUTHORITY\\SYSTEM",
+        ),
+        ProcessItem(
+            pid=1420,
+            name="svchost.exe",
+            cpu_percent=1.2,
+            memory_mb=42.1,
+            user="NT AUTHORITY\\NETWORK SERVICE",
+        ),
+        ProcessItem(
+            pid=2840,
+            name="MsMpEng.exe",
+            cpu_percent=1.8,
+            memory_mb=182.5,
+            user="NT AUTHORITY\\SYSTEM",
+        ),
+        ProcessItem(
+            pid=3100,
+            name="sentinel_agent.exe",
+            cpu_percent=0.8,
+            memory_mb=34.6,
+            user="NT AUTHORITY\\SYSTEM",
+        ),
+        ProcessItem(
+            pid=4210,
+            name="explorer.exe",
+            cpu_percent=2.4,
+            memory_mb=98.3,
+            user="CORP\\Administrator",
+        ),
     ]
 
     return SuccessResponse(message="Processes loaded", data=processes)
 
 
-@router.get("/endpoints/{endpoint_id}/users", response_model=SuccessResponse[List[UserAccountItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/users",
+    response_model=SuccessResponse[List[UserAccountItem]],
+)
 async def get_users(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
     users = [
-        UserAccountItem(username="Administrator", is_admin=True, is_disabled=False, last_login="2026-07-30 14:20:00"),
-        UserAccountItem(username="Guest", is_admin=False, is_disabled=True, last_login="Never"),
-        UserAccountItem(username="WDAGUtilityAccount", is_admin=False, is_disabled=True, last_login="Never"),
-        UserAccountItem(username="sentinel_service", is_admin=True, is_disabled=False, last_login="2026-07-30 17:25:00"),
+        UserAccountItem(
+            username="Administrator",
+            is_admin=True,
+            is_disabled=False,
+            last_login="2026-07-30 14:20:00",
+        ),
+        UserAccountItem(
+            username="Guest", is_admin=False, is_disabled=True, last_login="Never"
+        ),
+        UserAccountItem(
+            username="WDAGUtilityAccount",
+            is_admin=False,
+            is_disabled=True,
+            last_login="Never",
+        ),
+        UserAccountItem(
+            username="sentinel_service",
+            is_admin=True,
+            is_disabled=False,
+            last_login="2026-07-30 17:25:00",
+        ),
     ]
 
     return SuccessResponse(message="Local users loaded", data=users)
 
 
-
-@router.get("/endpoints/{endpoint_id}/timeline", response_model=SuccessResponse[List[TimelineEventItem]])
+@router.get(
+    "/endpoints/{endpoint_id}/timeline",
+    response_model=SuccessResponse[List[TimelineEventItem]],
+)
 async def get_timeline(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     ep = await _get_endpoint_or_404(endpoint_id, db)
 
@@ -990,28 +1267,28 @@ async def get_timeline(endpoint_id: str, db: AsyncSession = Depends(get_db)):
             event_type="Heartbeat",
             title="Heartbeat Accepted",
             timestamp=(now - timedelta(minutes=2)).strftime("%Y-%m-%d %H:%M:%S"),
-            details="Agent checked in successfully. Health state: Healthy."
+            details="Agent checked in successfully. Health state: Healthy.",
         ),
         TimelineEventItem(
             id="evt-2",
             event_type="Inventory",
             title="Hardware & Software Telemetry Uploaded",
             timestamp=(now - timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M:%S"),
-            details="Reported 33 installed software applications and 277 Windows Services."
+            details="Reported 33 installed software applications and 277 Windows Services.",
         ),
         TimelineEventItem(
             id="evt-3",
             event_type="Command",
             title="Remote Audit Command Executed",
             timestamp=(now - timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S"),
-            details="Command SYSTEM_SCAN completed with exit code 0."
+            details="Command SYSTEM_SCAN completed with exit code 0.",
         ),
         TimelineEventItem(
             id="evt-4",
             event_type="Alert",
             title="Policy Enforcement Alert",
             timestamp=(now - timedelta(hours=6)).strftime("%Y-%m-%d %H:%M:%S"),
-            details="Firewall rule updated: Outbound rule verified."
+            details="Firewall rule updated: Outbound rule verified.",
         ),
     ]
 

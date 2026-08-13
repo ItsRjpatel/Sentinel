@@ -1,12 +1,22 @@
 import uuid
 from typing import Optional
-from sqlalchemy import String, Integer, BigInteger, Boolean, ForeignKey, Uuid, UniqueConstraint
+from sqlalchemy import (
+    String,
+    Integer,
+    BigInteger,
+    Boolean,
+    ForeignKey,
+    Uuid,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.common.models import BaseModelMixin
 from app.db.base import Base
 
+
 class HardwareInventory(Base, BaseModelMixin):
     """Database model storing endpoint hardware specifications and configuration states."""
+
     __tablename__ = "hardware_inventory"
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
@@ -14,7 +24,7 @@ class HardwareInventory(Base, BaseModelMixin):
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
-        index=True
+        index=True,
     )
     manufacturer: Mapped[str] = mapped_column(String(255), nullable=False)
     model: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -35,6 +45,7 @@ class HardwareInventory(Base, BaseModelMixin):
 
 class OperatingSystemInventory(Base, BaseModelMixin):
     """Database model storing endpoint operating system specifications and system state."""
+
     __tablename__ = "operating_system_inventory"
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
@@ -42,7 +53,7 @@ class OperatingSystemInventory(Base, BaseModelMixin):
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
-        index=True
+        index=True,
     )
     computer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     os_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -69,23 +80,28 @@ class OperatingSystemInventory(Base, BaseModelMixin):
 
 class NetworkAdapterInventory(Base, BaseModelMixin):
     """Database model storing endpoint network adapter details."""
+
     __tablename__ = "network_adapter_inventory"
     __table_args__ = (
-        UniqueConstraint("endpoint_id", "interface_guid", name="uq_network_adapter_endpoint_guid"),
+        UniqueConstraint(
+            "endpoint_id", "interface_guid", name="uq_network_adapter_endpoint_guid"
+        ),
     )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     hostname: Mapped[str] = mapped_column(String(255), nullable=False)
     domain_workgroup: Mapped[str] = mapped_column(String(255), nullable=False)
     adapter_name: Mapped[str] = mapped_column(String(255), nullable=False)
     adapter_description: Mapped[str] = mapped_column(String(255), nullable=False)
     interface_guid: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    mac_address: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    mac_address: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, index=True
+    )
     ipv4: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     ipv6: Mapped[str] = mapped_column(String(200), nullable=False)
     subnet_mask: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -105,16 +121,19 @@ class NetworkAdapterInventory(Base, BaseModelMixin):
 
 class PhysicalDiskInventory(Base, BaseModelMixin):
     """Database model storing endpoint physical disk details."""
+
     __tablename__ = "physical_disk_inventory"
     __table_args__ = (
-        UniqueConstraint("endpoint_id", "serial_number", name="uq_physical_disk_endpoint_serial"),
+        UniqueConstraint(
+            "endpoint_id", "serial_number", name="uq_physical_disk_endpoint_serial"
+        ),
     )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     disk_number: Mapped[int] = mapped_column(Integer, nullable=False)
     model: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -137,8 +156,10 @@ class PhysicalDiskInventory(Base, BaseModelMixin):
         back_populates="disk", cascade="all, delete-orphan"
     )
 
+
 class LogicalVolumeInventory(Base, BaseModelMixin):
     """Database model storing logical volume partitions linked to physical disks."""
+
     __tablename__ = "logical_volume_inventory"
     __table_args__ = (
         UniqueConstraint("disk_id", "volume_guid", name="uq_logical_volume_disk_guid"),
@@ -148,7 +169,7 @@ class LogicalVolumeInventory(Base, BaseModelMixin):
         Uuid(as_uuid=True),
         ForeignKey("physical_disk_inventory.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     disk: Mapped["PhysicalDiskInventory"] = relationship(back_populates="volumes")
     drive_letter: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
@@ -169,18 +190,27 @@ class LogicalVolumeInventory(Base, BaseModelMixin):
 
 class SoftwareInventory(Base, BaseModelMixin):
     """Database model storing endpoint installed software application details."""
+
     __tablename__ = "software_inventory"
     __table_args__ = (
-        UniqueConstraint("endpoint_id", "application_name", "publisher", "version", name="uq_software_endpoint_app_pub_ver"),
+        UniqueConstraint(
+            "endpoint_id",
+            "application_name",
+            "publisher",
+            "version",
+            name="uq_software_endpoint_app_pub_ver",
+        ),
     )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
-    application_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    application_name: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True
+    )
     publisher: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     version: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     install_date: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -202,16 +232,19 @@ class SoftwareInventory(Base, BaseModelMixin):
 
 class WindowsUpdateInventory(Base, BaseModelMixin):
     """Database model storing endpoint Windows Update history and installed patches."""
+
     __tablename__ = "windows_update_inventory"
     __table_args__ = (
-        UniqueConstraint("endpoint_id", "kb_number", name="uq_windows_update_endpoint_kb"),
+        UniqueConstraint(
+            "endpoint_id", "kb_number", name="uq_windows_update_endpoint_kb"
+        ),
     )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     kb_number: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -237,16 +270,19 @@ class WindowsUpdateInventory(Base, BaseModelMixin):
 
 class WindowsServiceInventory(Base, BaseModelMixin):
     """Database model storing endpoint Windows Services information."""
+
     __tablename__ = "windows_service_inventory"
     __table_args__ = (
-        UniqueConstraint("endpoint_id", "service_name", name="uq_windows_service_endpoint_name"),
+        UniqueConstraint(
+            "endpoint_id", "service_name", name="uq_windows_service_endpoint_name"
+        ),
     )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("endpoints.id", ondelete="CASCADE"),
         nullable=False,
-        index=True
+        index=True,
     )
     service_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     display_name: Mapped[str] = mapped_column(String(500), nullable=False)

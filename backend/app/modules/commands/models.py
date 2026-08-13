@@ -7,23 +7,29 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 from app.modules.commands.enums import CommandStatus, CommandType
 
+
 def get_utc_now():
     return datetime.now(timezone.utc)
+
 
 class Command(Base):
     __tablename__ = "commands"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    endpoint_id = Column(UUID(as_uuid=True), ForeignKey("endpoints.id", ondelete="CASCADE"), nullable=False)
+    endpoint_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("endpoints.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     command_type = Column(String, nullable=False)
     status = Column(String, nullable=False, default=CommandStatus.PENDING)
     payload = Column(JSONB, nullable=True)
     created_by = Column(String, nullable=True)
-    
+
     created_at = Column(DateTime(timezone=True), nullable=False, default=get_utc_now)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     result = Column(JSONB, nullable=True)
     error_message = Column(String, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)

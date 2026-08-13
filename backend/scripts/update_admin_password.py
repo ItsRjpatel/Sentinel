@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.modules.auth.models import User
 from app.core.security import get_password_hash
 
+
 async def main():
     async with async_session_maker() as session:
         result = await session.execute(select(User).where(User.username == "admin"))
@@ -19,6 +20,7 @@ async def main():
             print("Admin password updated successfully in the database.")
         else:
             print("Admin user not found. Run bootstrap to create one.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
