@@ -54,7 +54,7 @@ jobs:
       - name: Run tests with pytest
         run: |
           cd backend
-          pytest --tb=short
+          python -m pytest --tb=short
 
   # ------------------------------------------------------------------
   # Deploy: Azure App Service
