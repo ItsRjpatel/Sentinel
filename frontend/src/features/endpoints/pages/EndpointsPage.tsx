@@ -106,7 +106,9 @@ export function EndpointsPage() {
   }, []);
 
   const handleCopyCommand = () => {
-    navigator.clipboard.writeText("powershell -ExecutionPolicy Bypass -Command \"Invoke-WebRequest -Uri 'http://localhost:8000/api/v1/agent/deploy.ps1' -OutFile 'install.ps1'; .\\install.ps1 -Server 'http://localhost:8000'\"");
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+    const serverUrl = apiBase.replace(/\/api\/v1\/?$/, "");
+    navigator.clipboard.writeText(`powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '${apiBase}/agent/deploy.ps1' -OutFile 'install.ps1'; .\\install.ps1 -Server '${serverUrl}'"`);
     setCopiedKey(true);
     setTimeout(() => setCopiedKey(false), 2000);
   };
@@ -195,8 +197,8 @@ export function EndpointsPage() {
             <div className="space-y-3 text-xs text-on-surface-variant">
               <p>Run the following automated PowerShell deployment command on target host machines to enroll them into Sentinel X EDR:</p>
               
-              <div className="p-3 bg-surface-container-high rounded-md border border-outline-variant/50 font-mono text-[11px] text-on-surface relative">
-                <code>powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri 'http://localhost:8000/api/v1/agent/deploy.ps1' -OutFile 'install.ps1'; .\install.ps1 -Server 'http://localhost:8000'"</code>
+              <div className="p-3 bg-surface-container-high rounded-md border border-outline-variant/50 font-mono text-[11px] text-on-surface relative break-all">
+                <code>{`powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '${import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"}/agent/deploy.ps1' -OutFile 'install.ps1'; .\\install.ps1 -Server '${(import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/api\/v1\/?$/, "")}'"`}</code>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">

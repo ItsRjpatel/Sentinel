@@ -46,6 +46,15 @@ class Settings(BaseSettings):
     ALLOWED_HOSTS: List[str] = ["*"]
     CORS_ORIGINS: List[str] = ["*"]
 
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: str | List[str]) -> List[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, env_file_encoding="utf-8", extra="ignore"
     )
