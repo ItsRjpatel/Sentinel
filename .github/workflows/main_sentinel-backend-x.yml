@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read #This is required for actions/checkout
+      packages: write
 
     steps:
       - uses: actions/checkout@v4
@@ -25,8 +26,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io/
-          username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_0BAC369DAD774BE8AC182ACA0537DD7F }}
-          password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_EB705BD0C0614DDF82933086E63EB05A }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push container image to registry
         uses: docker/build-push-action@v3
