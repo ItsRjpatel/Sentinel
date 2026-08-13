@@ -1,6 +1,7 @@
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 from app.core.constants import (
     DEFAULT_API_PREFIX,
@@ -24,6 +25,15 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_postgres_scheme(cls, v: str) -> str:
+        if v and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     # Security
     SECRET_KEY: str = "dummy-secret-key-for-local-dev-only"

@@ -13,7 +13,7 @@ set -e
 # The database is NEVER reset, truncated, or destroyed.
 # ============================================================
 
-cd /home/site/wwwroot
+cd /app
 
 echo "Running Alembic database migrations..."
 python -m alembic upgrade head
