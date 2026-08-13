@@ -20,6 +20,13 @@ In modern enterprise environments, IT administrators and security teams need dee
 
 It provides an integrated "single pane of glass" for both IT Operations (inventory, software, OS metrics) and Security Operations (alerts, endpoint isolation, security posture scoring).
 
+### 🚀 Live Demo
+
+*Note: Services may be placed into sleep/hibernation mode or activated only during demonstrations to conserve cloud resources. If the links are inaccessible, please reach out for an active demo.*
+
+- **Frontend Application:** [https://sentinel-web-dl5o.onrender.com](https://sentinel-web-dl5o.onrender.com)
+- **Backend API (Swagger):** [https://sentinel-backend-x.azurewebsites.net/docs](https://sentinel-backend-x.azurewebsites.net/docs)
+
 ---
 
 ## 2. Features
