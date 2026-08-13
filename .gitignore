@@ -93,3 +93,15 @@ check_db.py
 restart_svc.py
 scratch/db_investigation.py
 
+
+# Node
+node_modules/
+
+# New Build
+dist_new/
+build_new/
+
+# Temporary output files
+out*.txt
+*.cover
+
