@@ -34,6 +34,7 @@ jobs:
     env:
       DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/sentinel_test"
       JWT_SECRET_KEY: "ci-test-secret-key-not-for-production"
+      BOOTSTRAP_ADMIN_PASSWORD: "ci-test-admin-password"
 
     steps:
       - uses: actions/checkout@v4
